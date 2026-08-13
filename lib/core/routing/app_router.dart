@@ -17,6 +17,9 @@ import '../providers.dart';
 
 import '../../features/auth/login_screen.dart';
 import '../../features/chat/chat_diagnostic_screen.dart';
+import '../../features/communities/communities_screen.dart';
+import '../../features/communities/community_detail_screen.dart';
+import '../../features/communities/create_community_screen.dart';
 import '../../features/home/home_screen.dart';
 
 /// Mutable auth status shared between the provider and the router redirect.
@@ -66,6 +69,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/chat/diagnostic',
         builder: (context, state) => const ChatDiagnosticScreen(),
+      ),
+      GoRoute(
+        path: '/communities',
+        builder: (context, state) => const CommunitiesScreen(),
+      ),
+      GoRoute(
+        path: '/communities/create',
+        builder: (context, state) => const CreateCommunityScreen(),
+      ),
+      GoRoute(
+        path: '/communities/:uuid',
+        builder: (context, state) => CommunityDetailScreen(
+          uuid: state.pathParameters['uuid']!,
+        ),
       ),
     ],
   );

@@ -15,6 +15,8 @@ import 'package:juggle_im/juggle_im.dart';
 import 'package:juggle_im/juggle_const.dart';
 import 'package:juggle_im/model/connection_listener.dart';
 import 'package:juggle_im/model/conversation.dart';
+import 'package:juggle_im/model/get_message_option.dart';
+import 'package:juggle_im/model/message.dart';
 import 'package:juggle_im/model/message/text_message.dart';
 
 import 'chat_session_service.dart';
@@ -133,9 +135,19 @@ class JuggleImService {
   /// Envia mensagem de texto privada (spec §42). A identidade do destinatário
   /// é um JuggleIM user_id (`wellness:<uuid>`) — nunca email/phone.
   Future<SendResult> sendPrivateText(String toUserId, String text) {
+    return _sendText(Conversation(ConversationType.private, toUserId), text);
+  }
+
+  /// Envia mensagem de texto num grupo de comunidade (Fase 4, spec §33).
+  ///
+  /// groupId é o `juggle_group_id` (`community:<uuid>`) retornado pelo backend.
+  Future<SendResult> sendGroupText(String groupId, String text) {
+    return _sendText(Conversation(ConversationType.group, groupId), text);
+  }
+
+  Future<SendResult> _sendText(Conversation conversation, String text) {
     final completer = Completer<SendResult>();
     final message = TextMessage.content(text);
-    final conversation = Conversation(ConversationType.private, toUserId);
     _sdk.sendMessage(message, conversation, (msg, errorCode) {
       if (completer.isCompleted) return;
       completer.complete(SendResult(
@@ -148,6 +160,28 @@ class JuggleImService {
       const Duration(seconds: 15),
       onTimeout: () => const SendResult(ok: false, errorCode: -1),
     );
+  }
+
+  /// Histórico de mensagens de um grupo (Fase 4, spec §33 — load history).
+  ///
+  /// direction = MessageDirection.receive puxa do passado para o presente;
+  /// [count] mensagens mais recentes. Retorna lista de `Message` do SDK.
+  Future<List<Message>> loadGroupHistory(String groupId, {int count = 30}) async {
+    final conversation = Conversation(ConversationType.group, groupId);
+    final result = await _sdk.getMessages(
+      conversation,
+      MessageDirection.receive,
+      GetMessageOption()..count = count,
+    );
+    return result.t ?? const [];
+  }
+
+  /// Conteúdo de texto de uma mensagem do SDK (para exibir no histórico).
+  static String textOf(Message message) {
+    if (message.content is TextMessage) {
+      return (message.content as TextMessage).content;
+    }
+    return '';
   }
 
   void dispose() {

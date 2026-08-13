@@ -22,6 +22,11 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('Noana Wellness'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.groups_outlined),
+            tooltip: 'Comunidades',
+            onPressed: () => context.go('/communities'),
+          ),
+          IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
             tooltip: 'Chat diagnóstico',
             onPressed: () => context.go('/chat/diagnostic'),
