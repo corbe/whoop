@@ -1,10 +1,11 @@
-/// Home placeholder (Phase 1). Real content lands with later phases.
+/// Home placeholder (Phase 1+2). Shows the resolved WellnessPerson identity.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
+import '../../services/wellness_identity_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -13,6 +14,8 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authServiceProvider);
     final identity = auth.currentIdentity;
+    final personAsync = ref.watch(currentWellnessPersonProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Noana Wellness'),
@@ -35,6 +38,32 @@ class HomeScreen extends ConsumerWidget {
             Text(
               identity != null ? identity.username : '—',
               style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 16),
+            personAsync.when(
+              loading: () => const CircularProgressIndicator(strokeWidth: 2),
+              error: (e, _) => Text(
+                'WellnessPerson indisponível: $e',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              data: (person) => person == null
+                  ? const Text('Bootstrap pendente…')
+                  : Column(
+                      children: [
+                        Text(
+                          person.displayName.isEmpty
+                              ? 'WellnessPerson ${person.uuid.substring(0, 8)}'
+                              : person.displayName,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'cognito_sub: ${person.cognitoSub}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),

@@ -75,7 +75,10 @@ class ApiClient {
       'Accept': 'application/json',
     };
     if (authenticated) {
-      headers['Authorization'] = 'Bearer ${await _auth.getAccessToken()}';
+      // HML/prod backend (CognitoSessionMiddleware + django_cognito_jwt)
+      // autentica com o IdToken Cognito: o AccessToken não carrega as claims
+      // aud/email exigidas. Mesmo comportamento do app Clinical existente.
+      headers['Authorization'] = 'Bearer ${await _auth.getIdToken()}';
     }
     final request = http.Request(method, uri)..headers.addAll(headers);
     if (body != null) {

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
+import '../../services/wellness_identity_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -45,7 +46,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!result.ok) _error = result.errorMessage ?? 'Login failed';
     });
     if (result.ok) {
-      context.go('/');
+      // Fase 2: resolve/cria WellnessPerson + WellnessProfile (spec §6).
+      // Idempotente — seguro chamar em todo login/restauração de sessão.
+      ref
+          .read(currentWellnessPersonProvider.notifier)
+          .refresh()
+          .catchError((Object e, StackTrace st) {
+        debugPrint('[bootstrap] falhou: $e');
+      });
+      if (mounted) context.go('/');
     }
   }
 

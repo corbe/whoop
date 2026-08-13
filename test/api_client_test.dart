@@ -40,9 +40,9 @@ void main() {
       );
     });
 
-    test('sends Authorization Bearer header with access token', () async {
+    test('sends Authorization Bearer header with id token', () async {
       final client = MockClient((request) async {
-        expect(request.headers['Authorization'], 'Bearer access-token-1');
+        expect(request.headers['Authorization'], 'Bearer id-token-1');
         expect(request.url.toString(),
             'https://api.hml.noana.link/v1/wellness/ping');
         return http.Response('{"ok":true}', 200);
@@ -72,7 +72,7 @@ void main() {
         calls++;
         if (calls == 1) return http.Response('{"msg":"expired"}', 401);
         expect(request.headers['Authorization'],
-            'Bearer access-token-refreshed');
+            'Bearer id-token-refreshed');
         return http.Response('{"ok":true}', 200);
       });
       final api = ApiClient(config: config, auth: auth, httpClient: client);
