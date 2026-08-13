@@ -19,6 +19,7 @@ class Community {
     this.memberCount = 0,
     this.currentUserRole,
     this.currentUserStatus,
+    this.shareScopeJson = const {},
     this.chatSynced = false,
     this.createdAt,
     this.updatedAt,
@@ -38,6 +39,7 @@ class Community {
   final int memberCount;
   final String? currentUserRole;
   final String? currentUserStatus;
+  final Map<String, dynamic> shareScopeJson;
   final bool chatSynced;
   final String? createdAt;
   final String? updatedAt;
@@ -69,6 +71,7 @@ class Community {
       memberCount: (json['member_count'] as int?) ?? 0,
       currentUserRole: json['current_user_role'] as String?,
       currentUserStatus: json['current_user_status'] as String?,
+      shareScopeJson: (json['share_scope_json'] as Map<String, dynamic>?) ?? const {},
       chatSynced: (json['chat_synced'] as bool?) ?? false,
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,

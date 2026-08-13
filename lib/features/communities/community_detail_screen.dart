@@ -9,8 +9,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../services/community_providers.dart';
+import '../../services/score_providers.dart';
 import '../../shared/models/community.dart';
 import 'community_chat_screen.dart';
+import 'leaderboard_tab.dart';
+import 'privacy_screen.dart';
 
 class CommunityDetailScreen extends ConsumerStatefulWidget {
   const CommunityDetailScreen({super.key, required this.uuid});
@@ -29,13 +32,31 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _openPrivacy(Community community) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PrivacyScreen(
+          communityUuid: community.uuid,
+          communityName: community.name,
+        ),
+        settings: RouteSettings(arguments: community.shareScopeJson),
+      ),
+    ).then((_) {
+      if (mounted) {
+        ref.invalidate(communityDetailProvider(community.uuid));
+        ref.invalidate(communityRankingProvider);
+      }
+    });
   }
 
   @override
@@ -48,6 +69,7 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
           controller: _tabController,
           tabs: const [
             Tab(text: 'Visão geral'),
+            Tab(text: 'Leaderboard'),
             Tab(text: 'Membros'),
             Tab(text: 'Chat'),
           ],
@@ -59,7 +81,8 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
         data: (community) => TabBarView(
           controller: _tabController,
           children: [
-            _OverviewTab(community: community),
+            _OverviewTab(community: community, onOpenPrivacy: () => _openPrivacy(community)),
+            LeaderboardTab(communityUuid: widget.uuid),
             _MembersTab(uuid: widget.uuid, community: community),
             _ChatTab(community: community),
           ],
@@ -70,9 +93,10 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
 }
 
 class _OverviewTab extends ConsumerWidget {
-  const _OverviewTab({required this.community});
+  const _OverviewTab({required this.community, required this.onOpenPrivacy});
 
   final Community community;
+  final VoidCallback onOpenPrivacy;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -180,6 +204,14 @@ class _OverviewTab extends ConsumerWidget {
             icon: const Icon(Icons.group_add),
             label: Text(community.isBanned ? 'Banido' : 'Entrar'),
           ),
+        if (isMember) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: onOpenPrivacy,
+            icon: const Icon(Icons.shield_outlined),
+            label: const Text('Privacidade / Compartilhamento'),
+          ),
+        ],
       ],
     );
   }
