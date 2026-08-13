@@ -3,10 +3,10 @@
 Aplicativo mobile **Flutter/Dart (Android + iOS)** de wellness social — experiência
 social inspirada no WHOOP, com domínio e arquitetura próprios da Noana.
 
-> **Status: FASE 4 — COMMUNITIES + JUGGLEIM GROUP SYNC** (Community ↔
-> JuggleIM Group, membership idempotent, reconciliation, real 2-user HML
-> Community Chat E2E). Fases 5–9 em andamento conforme plano em
-> `.hermes/plans/2026-08-13_noana-wellness-app.md`.
+> **Status: FASE 5 — DAILY SCORES + PRIVACY + COMMUNITY SNAPSHOTS + RANKINGS**
+> (DailyScore privado, share_scope por Community, CommunityScoreSnapshot,
+> leaderboard day/week/month, real 2-user HML E2E 22/22). Fases 6–9 conforme
+> plano em `.hermes/plans/2026-08-13_noana-wellness-app.md`.
 
 ---
 
@@ -260,7 +260,119 @@ python -m pytest wellness/tests_community.py -q
 #   concurrent double-join (TransactionTestCase + Barrier) → 1 row, active, no 500
 ```
 
-### Estrutura do projeto (spec §60)
+## DailyScores + privacy + snapshots + ranking (Fase 5)
+
+### Score audit (spec §1–§2) — see `SCORE_AUDIT.md`
+
+- **Authoritative formula found:** Noana Health Score (noana-curator-server,
+  production) — per-parameter "within target" scores (CI 90% ∩ target range,
+  0–100) aggregated per interval-of-day; range **0–100** is the authoritative
+  Noana convention (reused for validation).
+- **NOT FOUND (spec §2 STOP CONDITION):** readiness/sleep/activity/strain/
+  stress/physical_capacity formulas do NOT exist in any Noana repo.
+  **Production calculation NOT implemented** — no invented health formulas.
+  DailyScore fields are nullable; E2E uses deterministic test fixtures only.
+  A formula specification is required before any production calculation ships.
+
+### Data model (spec §4–§7)
+
+- `DailyScore` — private score record; **1 per (person, score_date)**
+  (unique constraint + idempotent upsert); score fields nullable 0–100;
+  `formula_version` required; `computed_by` = `client` (hoje) | `server`
+  (futuro, sem migração); `source_device_id` opcional.
+- **score_date rule (spec §7):** the client sends the user's **wellness day**
+  (`YYYY-MM-DD` local to the user, per `WellnessProfile.timezone`); the backend
+  treats it as an opaque day label with 1-per-person uniqueness. Late syncs
+  after midnight are assigned to the day they belong to by the client.
+- `CommunityScoreSnapshot` — social projection; **1 per
+  (community, person, score_date)**; only share-authorized fields populated.
+
+### APIs (spec §8–§33)
+
+| Endpoint | Description |
+| :--- | :--- |
+| `PUT /v1/wellness/scores/daily/{date}/` | Upsert (idempotente; identidade do JWT; valida 0–100; rejeita person_uuid/cognito_sub/user_uuid) |
+| `GET /v1/wellness/scores/daily/latest/` | Último DailyScore do usuário |
+| `GET /v1/wellness/scores/daily/?from=&to=` | Histórico do próprio usuário |
+| `PATCH /v1/wellness/communities/{uuid}/privacy/` | share_scope do próprio membro (readiness/sleep/activity/strain) |
+| `GET /v1/wellness/communities/{uuid}/ranking/?metric=&period=&date=` | Leaderboard (day/week/month; média dos dias válidos + days_count; ties determinísticos; paginação; current_user_position) |
+
+### Privacy chain (spec §18, §72)
+
+```
+DailyScore (privado) → share_scope (CommunityMember.share_scope_json)
+→ CommunityScoreSnapshot (projeção social) → Ranking
+```
+
+- Default privacy-safe: sem share_scope → nada é compartilhado (spec §14).
+- Mudança de privacidade **propaga** para snapshots existentes (spec §20):
+  desabilitar → NULL; reabilitar → rematerializa do histórico (spec §21).
+- Mesmo usuário pode expor métricas diferentes por comunidade (spec §63, §73).
+- Membro `left`/`banned` some do ranking e tem snapshots removidos (spec §22–§23).
+- Ranking expõe **apenas** projeções sociais — nunca DailyScore/raw health
+  (spec §36, §55): nenhum HR/HRV/SpO2/temperature/hypnogram/Contract.
+
+### Rebuild (spec §57)
+
+```bash
+python manage.py rebuild_wellness_community_snapshots
+python manage.py rebuild_wellness_community_snapshots --community <uuid> --person <uuid> --from 2026-08-01 --to 2026-08-13
+```
+
+### Flutter (spec §38–§50)
+
+- `lib/shared/models/score.dart` — DailyScore, DailyScoreUpload,
+  CommunityRanking(+Entry), CommunityShareScope.
+- `lib/services/score_service.dart` — getLatest/getHistory/uploadDailyScore/
+  updateShareScope/getRanking (spec §39). Fórmulas (quando existirem) ficam em
+  `features/scores/domain/` — nunca em widgets.
+- `lib/services/score_providers.dart` — latestDailyScoreProvider,
+  scoreHistoryProvider, communityRankingProvider(family), shareScope/upload
+  controllers com invalidação de cache (spec §50).
+- UI: Home mostra o DailyScore real (spec §47); CommunityDetail ganhou a tab
+  **Leaderboard** (Visão geral/Leaderboard/Membros/Chat) e o botão
+  **Privacidade / Compartilhamento** (toggles por comunidade, spec §42–§43).
+
+### Backend tests (noana-admin) — Fase 5
+
+```bash
+python -m pytest wellness/tests_score.py -q
+# 48 passed (spec §51–§56):
+#   upsert 10x/concorrente = 1 linha; identidade do JWT (rejeita client id)
+#   range 0–100, formula_version obrigatória, computed_by inválido
+#   privacy default-safe, enable/disable/reenable (rematerializa)
+#   snapshots multi-community com scopes diferentes (spec §53/§73)
+#   left/banned fora do ranking; ranking day/week/month; ties determinísticos
+#   paginação + current_user_position; sem raw health na resposta (spec §55)
+#   isolamento Clinical
+```
+
+### Verificação real no HML (Fase 5) — 22/22 PASS
+
+- Backend HML: **`noana-backend:hml-r59`** (helm rev 25), migração
+  `wellness.0003_...` aplicada; endpoints de score/privacy/ranking no ar.
+- Usuários existentes: **A** `zetestadoszetestados`, **B** `rafaelteste`.
+- Fixtures determinísticas (spec §61): A readiness=91, B readiness=84.
+
+```
+A upload DailyScore (readiness=91)      → 200; GET latest → 91
+B upload DailyScore (readiness=84)      → 200; GET latest → 84
+A 3x PUT mesmo dia                      → 1 linha (idempotente)
+A cria Community X (public_code); B join
+A e B compartilham readiness
+leaderboard readiness day              → 1º A 91, 2º B 84; sem raw health
+B desabilita readiness                 → some do ranking (redação)
+B reabilita
+multi-community: X readiness✓ sleep✗; Y readiness✗ sleep✓
+  → B readiness visível em X; B sleep visível em Y; B readiness NÃO em Y
+B leave em X                           → fora do ranking
+A ban B em Y                           → fora do ranking (sleep)
+```
+
+**E2E REAL HML (Fase 5): 22/22 PASS** — scores, privacidade por comunidade,
+redação imediata, leaderboard e exclusão por leave/ban verificados.
+
+## Estrutura do projeto (spec §60)
 
 ```
 lib/
@@ -279,20 +391,25 @@ lib/
 │   ├── chat_session_service.dart        POST /wellness/chat/session/ (spec §12)
 │   ├── juggle_im_service.dart           wrapper isolado do SDK juggle_im (spec §14)
 │   ├── community_service.dart           Community CRUD/join/leave/ban/role (spec §26)
-│   └── community_providers.dart         myCommunities/detail/members/actions (spec §27)
+│   ├── community_providers.dart         myCommunities/detail/members/actions (spec §27)
+│   ├── score_service.dart               DailyScore/privacy/ranking (spec §39)
+│   └── score_providers.dart             latest/history/ranking/shareScope (spec §49)
 ├── features/
 │   ├── auth/        LoginScreen (bootstrap pós-login)
-│   ├── home/        HomeScreen (person + profile + atalho chat)
+│   ├── home/        HomeScreen (person + profile + DailyScore real — spec §47)
 │   ├── chat/        ChatDiagnosticScreen (Fase 3, UI mínima de teste)
 │   ├── communities/ CommunitiesScreen/Card, CreateCommunityScreen,
-│   │                CommunityDetailScreen (Visão geral/Membros/Chat) (Fase 4)
-│   └── ...          (fases 5+)
+│   │                CommunityDetailScreen (Visão geral/Leaderboard/Membros/Chat),
+│   │                LeaderboardTab, PrivacyScreen (Fase 4+5)
+│   └── ...          (fases 6+)
 └── shared/
     └── models/
         ├── wellness_identity.dart       WellnessPerson/WellnessProfile/
         │                                WellnessBootstrapResponse/WellnessMe
-        └── community.dart               Community/CommunityMember/
-                                         CommunityCreateRequest (Fase 4)
+        ├── community.dart               Community/CommunityMember/
+        │                                CommunityCreateRequest (Fase 4)
+        └── score.dart                   DailyScore/CommunityRanking/
+                                         CommunityShareScope (Fase 5)
 ```
 
 ## Environment variables
@@ -327,10 +444,10 @@ flutter build appbundle --release   # produção
 
 ```bash
 flutter analyze        # 0 issues
-flutter test           # 44 testes
+flutter test           # 52 testes
 ```
 
-Cobertura atual (44 testes):
+Cobertura atual (52 testes):
 - `test/auth_service_test.dart` (11) — login/logout/restoreSession/refresh/
   getAccessToken/getCurrentIdentity; identidade única (login→logout→login).
 - `test/api_client_test.dart` (8) — Bearer **IdToken**, 401→refresh→retry (1x),
@@ -342,6 +459,8 @@ Cobertura atual (44 testes):
 - `test/community_service_test.dart` (9) — modelos Community/CommunityMember/
   deterministicGroupId + CommunityService (my/create/join/members/leave,
   IdToken, sem owner no payload, erro → `ApiException`).
+- `test/score_service_test.dart` (8) — modelos DailyScore/Ranking/ShareScope +
+  ScoreService (latest/404→null/upload/privacy/ranking; payload sem identidade).
 - `test/router_guard_test.dart` (3) — redirecionamento não-autenticado →
   `/login`, autenticado → home, logout → `/login`.
 - `test/app_smoke_test.dart` (1) — app renderiza e mostra login sem sessão.
@@ -356,6 +475,7 @@ cd backend && . ./.envhml && python -m pytest wellness/tests.py -q
 # campos de identidade imutáveis, 401, isolamento Clinical (0 Contract/Person)
 python -m pytest wellness/tests_juggle.py -q     # 16 passed (Fase 3)
 python -m pytest wellness/tests_community.py -q  # 52 passed (Fase 4)
+python -m pytest wellness/tests_score.py -q      # 48 passed (Fase 5)
 python -m pytest flespi/tests/test_models.py -q  # 3 passed (regressão)
 ```
 
