@@ -40,6 +40,7 @@ dependencies:
   http: ^1.6.0
   amplify_flutter: ^2.14.0
   amplify_auth_cognito: ^2.14.0
+  juggle_im: ^0.10.72
 
 dev_dependencies:
   flutter_test:

@@ -3,9 +3,10 @@
 Aplicativo mobile **Flutter/Dart (Android + iOS)** de wellness social — experiência
 social inspirada no WHOOP, com domínio e arquitetura próprios da Noana.
 
-> **Status: FASE 2 — WELLNESS IDENTITY** (WellnessPerson/WellnessProfile via
-> bootstrap + /me, integrado com Cognito real no HML). Fases 3–9 em andamento
-> conforme plano em `.hermes/plans/2026-08-13_noana-wellness-app.md`.
+> **Status: FASE 3 — JUGGLEIM IDENTITY SYNC + CHAT SESSION** (projeção JuggleIM
+> `wellness:<uuid>`, `POST /v1/wellness/chat/session/`, E2E 2 usuários real no
+> HML). Fases 4–9 em andamento conforme plano em
+> `.hermes/plans/2026-08-13_noana-wellness-app.md`.
 
 ---
 
@@ -64,8 +65,6 @@ continua disponível no `AuthService`, mas o header de API usa o IdToken.
 
 ## Wellness identity domain (Fase 2)
 
-### Backend (`noana-admin/backend/wellness/`)
-
 - **`WellnessPerson`** (spec §4): `uuid`, `cognito_sub` (**único** no banco),
   `user_uuid`, `display_name`, `avatar_url`, `height_cm`, `birth_date`, `gender`,
   timestamps. Entidade própria — NÃO herda de `person.models.Person` nem toca
@@ -103,6 +102,83 @@ resolve_or_create_person(cognito_sub)
 Executar bootstrap N vezes (retry, double-tap, re-login, restart) produz
 **sempre a mesma** WellnessPerson — nunca duplica.
 
+## JuggleIM identity sync + ChatSession (Fase 3)
+
+### Fluxo de identidade (spec §12)
+
+```
+Cognito (login/restore)
+   ↓ IdToken
+Wellness bootstrap (POST /v1/wellness/bootstrap/) → WellnessPerson (uuid)
+   ↓
+POST /v1/wellness/chat/session/
+   ↓ (backend, server-side)
+ensure_juggle_user(WellnessPerson)  →  JuggleIM User "wellness:<uuid>" (idempotente)
+   ↓
+ChatSession {user_id, token, ws_url, api_url, nav_url}  →  Flutter SDK
+```
+
+**1 Cognito identity → 1 WellnessPerson → 1 JuggleIM User → ChatSession → SDK.**
+JuggleIM é apenas uma *projeção* de mensageria — a fonte de verdade é o
+WellnessPerson (spec §8).
+
+### Estratégia de ID determinística (spec §9)
+
+- `JuggleImClient.deterministic_user_id(uuid)` → **`wellness:<uuid>`**.
+- **Nunca** email, telefone ou username mutável como chave de identidade.
+- O endpoint `/users/register` do servidor JuggleIM faz **upsert por user_id**:
+  chamadas repetidas/concorrentes (retry, double-tap, login/logout, restart)
+  nunca criam duplicatas; campos mutáveis (nickname/user_portrait) são
+  sincronizados quando diferem; o servidor devolve sempre um token fresco.
+
+### Fronteira de segredos (spec §13)
+
+- `JUGGLE_APP_KEY` / `JUGGLE_APP_SECRET` existem **somente no backend**
+  (env/settings; no HML via Secret `noana-secrets` + env vars do chart).
+- O Flutter recebe apenas `{user_id, token, ws_url, api_url, nav_url}` —
+  **nunca** credenciais admin, app secret ou acesso a APIs administrativas.
+- O endpoint deriva a identidade **exclusivamente do JWT Cognito** — nunca de
+  `person_uuid`/`juggle_user_id` enviados pelo cliente (verificado por teste).
+
+### Endpoints HML
+
+| Serviço | URL |
+| :--- | :--- |
+| Wellness API | `https://api.hml.noana.link/v1` |
+| Chat session | `POST /v1/wellness/chat/session/` |
+| JuggleIM API (apigateway) | `https://juggleim-api.hml.noana.link` |
+| JuggleIM Navigator | `https://juggleim-nav.hml.noana.link` |
+| JuggleIM WebSocket | `wss://juggleim-ws.hml.noana.link` |
+
+### Erros estruturados (spec §65)
+
+- Falha temporária do JuggleIM → `503` com mensagem clara; **identidade
+  Wellness permanece válida** (nada é apagado/corrompido).
+- Sem bootstrap → `404`; não autenticado → `401`.
+
+### Flutter: serviços isolados (spec §14)
+
+- `ChatSessionService` — única camada que chama `POST /wellness/chat/session/`.
+- `JuggleImService` — única camada que conhece o SDK `juggle_im`
+  (init/connect/disconnect/send). Widgets usam Riverpod, nunca o SDK direto.
+- Estados de conexão (spec §15): `disconnected → connecting → connected →
+  (reconnecting|disconnected) → connected` expostos via
+  `juggleConnectionStateProvider`.
+- **Queda de rede NÃO refaz login Cognito**: `reconnect()` reutiliza o token
+  do ChatSession vigente; só uma falha de sessão re-obtém o ChatSession.
+
+### Backend tests (noana-admin) — Fase 3
+
+```bash
+python -m pytest wellness/tests.py wellness/tests_juggle.py -q
+# 36 passed: bootstrap/me (20) + JuggleIM (16):
+#   - provisionamento 1º/repetido/concorrente (4 threads → mesmo id, 1 linha)
+#   - sem duplicidade, sync de perfil mutável, ID determinístico
+#   - chat session 200/401/404/503, identidade do cliente ignorada
+#   - payload client-safe sem app_secret/app_key/admin
+#   - isolamento Clinical (0 Contract/Person/CareRecipient)
+```
+
 ## Estrutura do projeto (spec §60)
 
 ```
@@ -118,11 +194,14 @@ lib/
 │   └── providers.dart
 ├── services/
 │   ├── wellness_api_service.dart        bootstrap/getMe/updateMe
-│   └── wellness_identity_providers.dart currentWellnessPerson/wellnessProfile
+│   ├── wellness_identity_providers.dart currentWellnessPerson/wellnessProfile
+│   ├── chat_session_service.dart        POST /wellness/chat/session/ (spec §12)
+│   └── juggle_im_service.dart           wrapper isolado do SDK juggle_im (spec §14)
 ├── features/
 │   ├── auth/        LoginScreen (bootstrap pós-login)
-│   ├── home/        HomeScreen (person + profile)
-│   └── ...          (fases 3+)
+│   ├── home/        HomeScreen (person + profile + atalho chat)
+│   ├── chat/        ChatDiagnosticScreen (Fase 3, UI mínima de teste)
+│   └── ...          (fases 4+)
 └── shared/
     └── models/
         └── wellness_identity.dart       WellnessPerson/WellnessProfile/
@@ -161,16 +240,18 @@ flutter build appbundle --release   # produção
 
 ```bash
 flutter analyze        # 0 issues
-flutter test           # 31 testes
+flutter test           # 35 testes
 ```
 
-Cobertura atual (31 testes):
+Cobertura atual (35 testes):
 - `test/auth_service_test.dart` (11) — login/logout/restoreSession/refresh/
   getAccessToken/getCurrentIdentity; identidade única (login→logout→login).
 - `test/api_client_test.dart` (8) — Bearer **IdToken**, 401→refresh→retry (1x),
   erro de refresh → `ApiException` 401, timeouts, erros de rede, request sem auth.
 - `test/wellness_api_service_test.dart` (8) — modelos (Person/Profile/
   BootstrapResponse/Me) + bootstrap/getMe/updateMe + falha → `ApiException`.
+- `test/chat_session_service_test.dart` (4) — ChatSession parse + POST para
+  `/wellness/chat/session/` + erro 503 → `ApiException` + estados de conexão.
 - `test/router_guard_test.dart` (3) — redirecionamento não-autenticado →
   `/login`, autenticado → home, logout → `/login`.
 - `test/app_smoke_test.dart` (1) — app renderiza e mostra login sem sessão.
@@ -204,7 +285,36 @@ python -m pytest flespi/tests/test_models.py -q   # 3 passed (regressão)
 de migrações (incluindo `contract.0031` corrigida) e cria
 `wellness_wellnessperson` + `wellness_wellnessprofile`. ✓
 
-## Verificação real no HML (Fase 2)
+## Verificação real no HML (Fase 3)
+
+- Backend HML: **`noana-backend:hml-r57`** (helm release `noana-hml` rev 23),
+  migração `wellness.0001_initial` aplicada, `JUGGLE_*` no Secret/Chart.
+- Usuários Cognito existentes (testes): **A** `zetestadoszetestados` e
+  **B** `rafaelteste` (senha temporária via `admin_set_user_password`).
+- Schema JuggleIM: colunas de ID (`user_id`, `target_id`, `sender_id`, ...)
+  ampliadas de VARCHAR(32) → VARCHAR(64) no MySQL `jim_db` para acomodar os IDs
+  determinísticos `wellness:<uuid>` (45 chars) — sem isso o servidor rejeitava
+  o inbox com `Data too long for column 'user_id'`.
+
+```
+A session  → wellness:b1cb5be3-3343-4736-93fe-3034fbfe2ecd
+B session  → wellness:4ceac009-a8a2-4e81-bcee-48fd439048b5
+
+send A→B (jg:text)                     → 200
+B history (realtime)                   → ['Ola B! Fase 3 E2E de A', ...]
+send B→A (jg:text)                     → 200
+A history (realtime)                   → ['Ola A! Recebi sua msg - B', ...]
+
+6x logout/login + restart (A)          → mesmo WellnessPerson UUID + mesmo
+                                         JuggleIM user_id (estável)
+6x chat/session repetido (A e B)       → mesmos user_ids, sem duplicatas
+users table (jim_db)                   → 1 linha por wellness:<uuid>
+```
+
+**E2E REAL HML: PASS** — A→B e B→A entregues em tempo real via JuggleIM,
+identidade estável em logout/login/restart, zero duplicatas.
+
+### Verificação real no HML (Fase 2)
 
 - Backend HML atualizado para a imagem **`noana-backend:hml-r55`** (helm
   upgrade, release `noana-hml` rev 21) e migração `wellness.0001_initial`
@@ -240,6 +350,9 @@ across login / logout+login / restart / 10x   (spec §66)
   `aud`/`email`). O `ApiClient` já envia o IdToken — não troque para AccessToken.
 - **`height_cm` como string**: o serializer Django (DecimalField) devolve
   `"178.5"` — o model Flutter aceita `num` e `String`.
+- **`tools:replace="android:label"`**: o SDK `juggle_im` puxa
+  `qiniu-android-sdk`, que declara `android:label` — o manifest do app usa
+  `tools:replace` para resolver o conflito de merge.
 
 ## Não fazer (spec §81, vigente desde a fase 1)
 

@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
 import '../../services/wellness_identity_providers.dart';
@@ -20,6 +21,11 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Noana Wellness'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Chat diagnóstico',
+            onPressed: () => context.go('/chat/diagnostic'),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sair',
