@@ -3,9 +3,9 @@
 Aplicativo mobile **Flutter/Dart (Android + iOS)** de wellness social — experiência
 social inspirada no WHOOP, com domínio e arquitetura próprios da Noana.
 
-> **Status: FASE 3 — JUGGLEIM IDENTITY SYNC + CHAT SESSION** (projeção JuggleIM
-> `wellness:<uuid>`, `POST /v1/wellness/chat/session/`, E2E 2 usuários real no
-> HML). Fases 4–9 em andamento conforme plano em
+> **Status: FASE 4 — COMMUNITIES + JUGGLEIM GROUP SYNC** (Community ↔
+> JuggleIM Group, membership idempotent, reconciliation, real 2-user HML
+> Community Chat E2E). Fases 5–9 em andamento conforme plano em
 > `.hermes/plans/2026-08-13_noana-wellness-app.md`.
 
 ---
@@ -179,7 +179,88 @@ python -m pytest wellness/tests.py wellness/tests_juggle.py -q
 #   - isolamento Clinical (0 Contract/Person/CareRecipient)
 ```
 
-## Estrutura do projeto (spec §60)
+## Communities + JuggleIM group sync (Fase 4)
+
+### Domain rules (spec §2, §47)
+
+```
+Community        ← social domain entity (source of truth = Noana Wellness backend)
+CommunityMember  ← membership source of truth
+JuggleIM Group   ← realtime messaging projection of the Community (never the reverse)
+```
+
+- Deterministic group id (spec §5): **`community:<community_uuid>`** — never
+  name/join code/owner/mutable slug.
+- Visibility: `private` | `invite_only` | `public_code` (join via `join_code`).
+- Roles: `owner`/`admin`/`member`. Statuses: `active`/`invited`/`left`/`banned`.
+- Invariant (spec §19): `CommunityMember.status == active` ⇄ present in the
+  JuggleIM group; `left`/`banned` ⇄ absent. The Wellness DB is authoritative.
+
+### Backend endpoints (spec §8–§18)
+
+| Endpoint | Description |
+| :--- | :--- |
+| `POST /v1/wellness/communities/` | Create Community — owner derived from the JWT, never from the client |
+| `GET /v1/wellness/communities/?scope=my\|discoverable` | List (membership / public_code) |
+| `GET /v1/wellness/communities/{uuid}/` | Detail: member_count, current_user_role/status, juggle_group_id |
+| `POST /v1/wellness/communities/{uuid}/join/` | Join (idempotent; join_code for public_code, invite for invite_only) |
+| `POST /v1/wellness/communities/{uuid}/leave/` | Leave → `left` + removed from group (sole owner cannot leave) |
+| `GET /v1/wellness/communities/{uuid}/members/` | Safe social fields only (no cognito_sub/clinical/health) |
+| `POST /v1/wellness/communities/{uuid}/members/{person_uuid}/ban/` | Ban → `banned` + removed from group (owner/admin) |
+| `POST /v1/wellness/communities/{uuid}/members/{person_uuid}/unban/` | Unban → `active` + re-added to group |
+| `PATCH /v1/wellness/communities/{uuid}/members/{person_uuid}/` | Role change (owner only, validated transitions) |
+
+### JuggleIM failure behavior (spec §10, §22)
+
+JuggleIM failure **never** corrupts Community/membership: the Community stays
+authoritative, `chat_sync_status=error` (+ `chat_sync_error`), and the
+reconciliation service fixes it later. No automatic Community deletion.
+
+### Reconciliation (spec §20, §21)
+
+```bash
+python manage.py reconcile_wellness_community_chat              # all
+python manage.py reconcile_wellness_community_chat --community <uuid>
+python manage.py reconcile_wellness_community_chat --dry-run
+```
+
+Compares active `CommunityMember`s (DB) vs JuggleIM group members and corrects
+divergence (DB active missing → add; DB left/banned present → remove).
+Idempotent: repeated runs converge to a stable state.
+
+### Flutter architecture (spec §26–§31)
+
+- `lib/shared/models/community.dart` — `Community`, `CommunityMember`,
+  `CommunityCreateRequest` mirroring the backend serializers.
+- `lib/services/community_service.dart` — `CommunityService`:
+  getMyCommunities/discoverCommunities/getCommunity/createCommunity/
+  joinCommunity/leaveCommunity/getMembers/banMember/unbanMember/updateRole.
+- `lib/services/community_providers.dart` — `myCommunitiesProvider`,
+  `discoverCommunitiesProvider`, `communityDetailProvider(family)`,
+  `communityMembersProvider(family)`, `communityActionControllerProvider`
+  (mutations invalidate lists/detail so the UI auto-refreshes).
+- UI (MVP): `CommunitiesScreen` (Minhas/Descobrir/Criar), `CommunityCard`,
+  `CreateCommunityScreen` (navigates to detail after creation),
+  `CommunityDetailScreen` (Visão geral/Membros/Chat tabs).
+- Chat reuses the **same** Phase 3 `ChatSessionService` + `JuggleImService`
+  (one WebSocket — no second abstraction, spec §32): `sendGroupText(groupId)`
+  + `loadGroupHistory(groupId)` on `ConversationType.group`.
+
+### Backend tests (noana-admin) — Fase 4
+
+```bash
+python -m pytest wellness/tests_community.py -q
+# 52 passed (spec §35–§36):
+#   create/owner-from-JWT/deterministic group id/ensure idempotency
+#   repeat create-join safe, join/leave/ban/unban, role authorization
+#   duplicate CommunityMember prevention (unique constraint)
+#   JuggleIM unavailable during create/join (Community stays authoritative)
+#   reconciliation: adds missing, removes banned/left, repeated → stable
+#   unauthorized endpoints, Clinical isolation
+#   concurrent double-join (TransactionTestCase + Barrier) → 1 row, active, no 500
+```
+
+### Estrutura do projeto (spec §60)
 
 ```
 lib/
@@ -196,16 +277,22 @@ lib/
 │   ├── wellness_api_service.dart        bootstrap/getMe/updateMe
 │   ├── wellness_identity_providers.dart currentWellnessPerson/wellnessProfile
 │   ├── chat_session_service.dart        POST /wellness/chat/session/ (spec §12)
-│   └── juggle_im_service.dart           wrapper isolado do SDK juggle_im (spec §14)
+│   ├── juggle_im_service.dart           wrapper isolado do SDK juggle_im (spec §14)
+│   ├── community_service.dart           Community CRUD/join/leave/ban/role (spec §26)
+│   └── community_providers.dart         myCommunities/detail/members/actions (spec §27)
 ├── features/
 │   ├── auth/        LoginScreen (bootstrap pós-login)
 │   ├── home/        HomeScreen (person + profile + atalho chat)
 │   ├── chat/        ChatDiagnosticScreen (Fase 3, UI mínima de teste)
-│   └── ...          (fases 4+)
+│   ├── communities/ CommunitiesScreen/Card, CreateCommunityScreen,
+│   │                CommunityDetailScreen (Visão geral/Membros/Chat) (Fase 4)
+│   └── ...          (fases 5+)
 └── shared/
     └── models/
-        └── wellness_identity.dart       WellnessPerson/WellnessProfile/
-                                         WellnessBootstrapResponse/WellnessMe
+        ├── wellness_identity.dart       WellnessPerson/WellnessProfile/
+        │                                WellnessBootstrapResponse/WellnessMe
+        └── community.dart               Community/CommunityMember/
+                                         CommunityCreateRequest (Fase 4)
 ```
 
 ## Environment variables
@@ -240,10 +327,10 @@ flutter build appbundle --release   # produção
 
 ```bash
 flutter analyze        # 0 issues
-flutter test           # 35 testes
+flutter test           # 44 testes
 ```
 
-Cobertura atual (35 testes):
+Cobertura atual (44 testes):
 - `test/auth_service_test.dart` (11) — login/logout/restoreSession/refresh/
   getAccessToken/getCurrentIdentity; identidade única (login→logout→login).
 - `test/api_client_test.dart` (8) — Bearer **IdToken**, 401→refresh→retry (1x),
@@ -252,6 +339,9 @@ Cobertura atual (35 testes):
   BootstrapResponse/Me) + bootstrap/getMe/updateMe + falha → `ApiException`.
 - `test/chat_session_service_test.dart` (4) — ChatSession parse + POST para
   `/wellness/chat/session/` + erro 503 → `ApiException` + estados de conexão.
+- `test/community_service_test.dart` (9) — modelos Community/CommunityMember/
+  deterministicGroupId + CommunityService (my/create/join/members/leave,
+  IdToken, sem owner no payload, erro → `ApiException`).
 - `test/router_guard_test.dart` (3) — redirecionamento não-autenticado →
   `/login`, autenticado → home, logout → `/login`.
 - `test/app_smoke_test.dart` (1) — app renderiza e mostra login sem sessão.
@@ -264,7 +354,9 @@ cd backend && . ./.envhml && python -m pytest wellness/tests.py -q
 # 20 passed — bootstrap (primeiro/repetido/10x), unicidade no banco,
 # corrida concorrente (2 threads → mesmo uuid, 1 linha), /me, PATCH,
 # campos de identidade imutáveis, 401, isolamento Clinical (0 Contract/Person)
-python -m pytest flespi/tests/test_models.py -q   # 3 passed (regressão)
+python -m pytest wellness/tests_juggle.py -q     # 16 passed (Fase 3)
+python -m pytest wellness/tests_community.py -q  # 52 passed (Fase 4)
+python -m pytest flespi/tests/test_models.py -q  # 3 passed (regressão)
 ```
 
 ### Fixes de infraestrutura de teste (pré-existentes, necessários p/ rodar pytest)
@@ -313,6 +405,44 @@ users table (jim_db)                   → 1 linha por wellness:<uuid>
 
 **E2E REAL HML: PASS** — A→B e B→A entregues em tempo real via JuggleIM,
 identidade estável em logout/login/restart, zero duplicatas.
+
+### Verificação real no HML (Fase 4)
+
+- Backend HML: **`noana-backend:hml-r58`** (helm release `noana-hml` rev 24),
+  migração `wellness.0002_community_...` aplicada; `/v1/wellness/communities/`
+  → 401 (auth ativa, endpoint no ar).
+- Mesmos usuários Cognito existentes: **A** `zetestadoszetestados` (owner) e
+  **B** `rafaelteste` (member) — nenhum pool/usuário novo criado (spec §37).
+- Comunidade E2E: `E2E Wellness Community <timestamp>` (public_code) → grupo
+  JuggleIM `community:<uuid>` criado e sincronizado pelo backend.
+
+```
+A create Community X (public_code)        → 201, owner do JWT, juggle_group_id
+                                            community:<uuid>, chat_synced
+JuggleIM group info                       → group_name sincronizado
+A no grupo, B join (join_code)            → active + B no grupo JuggleIM
+members API                               → A=owner active, B=member active
+A sends "hello community from A" (group)  → B recebe (history channel_type=2)
+B sends "hello A" (group)                 → A recebe (history)
+B leave                                   → status=left no DB + removido do grupo
+B rejoin (public_code)                    → active + de volta no grupo
+A ban B                                   → status=banned + removido do grupo;
+                                            join de B → 403
+A unban B                                 → status=active + re-adicionado
+invariante (spec §19)                     → active DB == membros do grupo
+reconcile_wellness_community_chat         → added=0 removed=0 (estável)
+drift injetado (B removido do grupo)      → reconcile: added=1, corrigido
+reconcile repetido                        → added=0 removed=0 (estável, sem duplicatas)
+```
+
+**E2E REAL HML (Fase 4): 30/30 PASS** — create/join/leave/rejoin/ban/unban +
+chat em grupo bidirecional + reconciliação corrigindo divergência real.
+
+*Limitação de mensageria*: sem dispositivo/emulador Android nesta máquina, o
+fluxo de mensagens é dirigido pela **API oficial do servidor JuggleIM** (a
+mesma infraestrutura que o SDK `juggle_im` usa via WebSocket) — envio via
+`/apigateway/messages/group/send` e recebimento verificado via
+`/apigateway/hismsgs/query?channel_type=2` (mesma prática documentada na Fase 3).
 
 ### Verificação real no HML (Fase 2)
 
