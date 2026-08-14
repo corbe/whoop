@@ -3,10 +3,10 @@
 Aplicativo mobile **Flutter/Dart (Android + iOS)** de wellness social — experiência
 social inspirada no WHOOP, com domínio e arquitetura próprios da Noana.
 
-> **Status: FASE 5 — DAILY SCORES + PRIVACY + COMMUNITY SNAPSHOTS + RANKINGS**
-> (DailyScore privado, share_scope por Community, CommunityScoreSnapshot,
-> leaderboard day/week/month, real 2-user HML E2E 22/22). Fases 6–9 conforme
-> plano em `.hermes/plans/2026-08-13_noana-wellness-app.md`.
+> **Status: FASE 6 — ADVANCED SOCIAL CHAT + NOTIFICATIONS** (replies,
+> reactions, imagens/arquivos, read/unread, mentions, preferências de
+> notificação por comunidade, push server-side com recipientes
+> membership-safe; E2E HML 25/25). Fases 7–9 em andamento conforme plano.
 
 ---
 
@@ -372,9 +372,157 @@ A ban B em Y                           → fora do ranking (sleep)
 **E2E REAL HML (Fase 5): 22/22 PASS** — scores, privacidade por comunidade,
 redação imediata, leaderboard e exclusão por leave/ban verificados.
 
+## Fase 6 — advanced chat + notifications (spec §84)
+
+### Arquitetura
+
+```text
+Community Chat (Flutter)
+├── ChatController (Riverpod, spec §48) — histórico paginado, dedupe por id,
+│     envio otimista + retry, estado de reply, reações, mark read
+├── JuggleImService (spec §4–§5) — ÚNICA camada que conhece o SDK; mapeia
+│     Message → ChatMessage (domínio); reply via referredMsgId nativo;
+│     jg:img/jg:file com progresso; reações; unread; mentions
+├── ChatAttachmentService (spec §19) — pick + validação (mime allowlist,
+│     tamanho), sem lógica de S3 em widgets
+└── NotificationSettingsScreen (spec §55) — all/mentions_only/muted
+        ↓
+Backend Wellness (Noana)
+├── CommunityNotificationPreference (spec §28–§30) — unique (community, person)
+├── resolve_push_recipients (spec §38) — ACTIVE only, exclui sender,
+│     all/mentions_only/muted; queries em lote (spec §80)
+└── WellnessPushEvent (spec §45–§46) — UNIQUE(source_message_id, person):
+      processamento idempotente de eventos de push
+```
+
+Cadeia de autorização preservada (spec §1–§2): Cognito → WellnessPerson →
+CommunityMember → Community → JuggleIM Group → Realtime Chat. JuggleIM é
+apenas infraestrutura de mensageria — nunca autoridade de associação.
+
+### JuggleIM feature audit (spec §3 — v0.10.72 SDK / v1.8.14 server)
+
+| Feature | SDK | Server API | Tipo de mensagem | Notas |
+| :--- | :--- | :--- | :--- | :--- |
+| Reply (quote) | ✅ `referredMsgId` | ✅ `refer_msg` | nativa | HTTP history NÃO serializa (limitação HisMsg) |
+| Reactions | ✅ add/remove/get | ✅ (WS channel) | `onMessageReactionAdd/Remove` | sem endpoint HTTP |
+| Image | ✅ `jg:img` | ✅ | `ImageMessage` | SDK faz upload |
+| File | ✅ `jg:file` | ✅ | `FileMessage` | SDK faz upload |
+| Read receipt | ✅ `sendReadReceipt`/`hasRead` | ✅ `messages/markread` | evento `onMessagesRead` | |
+| Unread | ✅ `unreadCount`/`getTotalUnreadCount` | ⚠️ `convers/clearunread` | `onTotalUnreadMessageCountUpdate` | count é SDK-local; HTTP não expõe |
+| Mentions | ✅ `MessageMentionInfo` | ✅ `mention_info` | nativa | sem parsing de texto |
+| Recall | ✅ `recallMessage` | ✅ `hismsgs/recall` | `onMessageRecall` | não exposto na UI |
+| Edit | ✅ `updateMessage` | ✅ `hismsgs/modify` | `onMessageUpdate` | não exposto na UI |
+| Typing indicator | ❌ | ❌ | — | não suportado |
+| Push offline | ⚠️ SDK registra token | ✅ `/apigateway/push` (tags) | — | providers (FCM etc.) NÃO configurados no HML |
+| Webhook de mensagem | — | ❌ NÃO EXISTE no v1.8.14 | — | sem fonte de evento server-side |
+
+### Reply (spec §7–§9)
+
+`sendText` aceita `ChatReplyRef` → `SendMessageOption.referredMessageId`
+(nativo). O composer mostra "Respondendo a {nome}" + preview + [X] para
+cancelar (spec §8); o estado de reply é limpo após o envio. Bubbles com
+referência renderizam preview com borda esquerda; original fora da página
+não quebra (informação estável no ref). **Verificado:** unit tests (reply
+set/clear/reference) + E2E HML (server aceita refer_msg nativo).
+
+### Reactions (spec §10–§12)
+
+Conjunto fixo: ❤️ 👍 🔥 😂 👏 💪. Add/remove via SDK nativo; eventos
+realtime `onMessageReactionAdd/Remove` atualizam outros clientes sem reload
+(spec §12); agregação por contagem (🔥 3). Identidade de usuários NÃO é
+exposta na UI. **Verificado:** unit tests (add/remove/agg via fake);
+realtime no HML exige device (canal WS) — documentado.
+
+### Attachments (spec §13–§19)
+
+Imagens (câmera/galeria) e arquivos (pdf, office, texto, imagens) via
+ChatAttachmentService: validação de tipo (allowlist) + tamanho (10 MB img /
+25 MB arquivo), preview, cancel. Upload é nativo do SDK
+(`sendMediaMessage` → `jg:img`/`jg:file` armazenados no im-server) — sem S3,
+sem credenciais AWS no app (spec §14). Falha de envio → bubble "falhou" +
+retry (spec §16/§49), nunca descarte silencioso. **Verificado:** unit tests
+(envio ok/falha/retry); upload real exige device (plugin MethodChannel).
+
+### Read / unread (spec §21–§23)
+
+`markConversationRead` (clearUnreadCount) chamado ao abrir a conversa —
+nunca por chegada de push. Unread total via `getTotalUnreadCount` + eventos
+realtime. **Limitação v1.8.14:** unread count é estado local do SDK (WS
+events); o HTTP `convers/query` não expõe o campo — verificação de
+"incremento" exige device. `messages/markread` + `convers/clearunread`
+aceitos (E2E HML 25/25).
+
+### Mentions (spec §24–§27)
+
+Metadata nativa `MessageMentionInfo` (type + target_user_ids) — sem parsing
+de texto; identidade = `wellness:<uuid>`/display_name, nunca email/phone/sub.
+Composer com @ abre lista de membros ACTIVE (spec §26) — previsto; envio com
+mention_info validado no E2E HML.
+
+### Notification preferences (spec §28–§31, §55)
+
+`CommunityNotificationPreference` (unique community+person; default **all**
+— documentado, spec §29). API:
+`GET/PATCH /v1/wellness/communities/{uuid}/notification-preferences/`
+(`{"mode":"all|mentions_only|muted"}`). Apenas o próprio membro altera;
+**left/banned → 403 (GET e PATCH)** — associação sempre vence (spec §31/§44).
+UI: Notificações na Community detail (3 opções, persiste no backend).
+**Verificado:** 21 testes backend (§61–§63) + E2E HML (default, mudanças,
+mode inválido 400, left/banned 403).
+
+### Push (spec §32–§47) — verificação em 3 níveis
+
+1. **Server-side recipient logic — VERIFICADO (testes §62/§87):**
+   `resolve_push_recipients` (ACTIVE only − sender; all/mentions_only/muted;
+   lote) + `process_push_event` idempotente (UNIQUE source_message_id+person;
+   retry não duplica — §45/§63). Logs estruturados spec §78.
+2. **Integração de evento — BLOQUEADO POR INFRA:** o im-server v1.8.14 NÃO
+   possui webhook/callback de mensagem (auditado no fonte: config_template
+   sem webhook; apenas actor interno). Sem fonte de evento, Noana não vê
+   mensagens SDK-direto → não dispara push (spec §36–§37: sem polling agressivo,
+   sem webhook inventado).
+3. **Entrega ao device — BLOQUEADO POR INFRA:** providers FCM/GeTui/APNs do
+   pushmanager existem no código, mas o deployment HML não tem provider
+   configurado; sem credenciais Firebase disponíveis (§57 — nada inventado).
+   SNS (usado pelo Clinical) é a infra Noana existente (§34) — documentado
+   como caminho de reuso futuro; DeviceFront é registro clínico de devices.
+
+Conclusão honesta (spec §72/§91): preferências + destinatários + idempotência
+provados; push device delivery NÃO reivindicado.
+
+### Deep link / payload safety (spec §40–§43)
+
+Payload de push conteria apenas type/community_uuid/message_id/sender
+display name/preview seguro — nunca tokens, app_secret, dados de saúde ou
+scores (spec §40–§41). Deep link: tap → restore auth → bootstrap →
+ChatSession → conversa; sessão expirada → login → continuação (spec §43).
+Implementação de push nativo (FCM) fica para quando a infra existir.
+
+### Membership security (spec §44, §73)
+
+left/banned: removidos do grupo JuggleIM, sem novas mensagens, sem elegibilidade
+de push, prefs 403. **Verificado no E2E HML real** (25/25): B sai → group
+members=1 + prefs 403; B banido → group members=1 + prefs 403.
+
+### Limitações documentadas (spec §9, §37, §60, §72, §91)
+
+- Typing indicator: não suportado pelo v1.8.14.
+- Reply/mention relation: servida via WS/SDK (Message.referredMsg/
+  mentionInfo); HTTP history a omite (serialization gap HisMsg).
+- Unread count: SDK-local; não verificável por HTTP sem device.
+- Reactions/attachments realtime: canal WS/plugin — exige device no host.
+- Push device delivery: infrastructure-blocked (sem webhook + sem provider).
+- iOS/macOS: compile não verificado neste host (spec §60).
+
+### Real HML E2E — Fase 6 (25/25, 2026-08-13)
+
+A/B reais (Cognito + chat/session): replies com refer_msg nativo, mentions
+com mention_info, markread + clearunread aceitos, prefs (default all →
+mentions_only → muted → all, inválido 400), leave → removido do grupo + 403,
+rejoin + ban → removido do grupo + 403.
+
 ## Estrutura do projeto (spec §60)
 
-```
 lib/
 ├── main.dart / app.dart
 ├── core/
@@ -444,10 +592,10 @@ flutter build appbundle --release   # produção
 
 ```bash
 flutter analyze        # 0 issues
-flutter test           # 52 testes
+flutter test           # 63 testes
 ```
 
-Cobertura atual (52 testes):
+Cobertura atual (63 testes):
 - `test/auth_service_test.dart` (11) — login/logout/restoreSession/refresh/
   getAccessToken/getCurrentIdentity; identidade única (login→logout→login).
 - `test/api_client_test.dart` (8) — Bearer **IdToken**, 401→refresh→retry (1x),
