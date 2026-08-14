@@ -3,10 +3,10 @@
 Aplicativo mobile **Flutter/Dart (Android + iOS)** de wellness social — experiência
 social inspirada no WHOOP, com domínio e arquitetura próprios da Noana.
 
-> **Status: FASE 6 — ADVANCED SOCIAL CHAT + NOTIFICATIONS** (replies,
-> reactions, imagens/arquivos, read/unread, mentions, preferências de
-> notificação por comunidade, push server-side com recipientes
-> membership-safe; E2E HML 25/25). Fases 7–9 em andamento conforme plano.
+> **Status: FASE 7 — CHALLENGES + PARTICIPANTS + RANKING** (desafios
+> time-bounded por comunidade, join/leave idempotente, privacy gate via
+> share_scope, ranking dinâmico, finalização congelada; E2E HML 22/22).
+> Fases 8–9 em andamento conforme plano.
 
 ---
 
@@ -521,6 +521,77 @@ com mention_info, markread + clearunread aceitos, prefs (default all →
 mentions_only → muted → all, inválido 400), leave → removido do grupo + 403,
 rejoin + ban → removido do grupo + 403.
 
+## Fase 7 — Challenges (spec §86)
+
+### Domínio
+
+```text
+Community → Challenge → ChallengeParticipant → DailyScore → ChallengeRanking
+```
+
+- **Challenge** (spec §4–§14): nome/descrição, metric (allowlist:
+  readiness/sleep/activity/strain — SÓ campos existentes de DailyScore, §6),
+  aggregation (average/best/days_recorded, §8), período explícito
+  (start<=end, máx. 90 dias, §12), status derivado de datas + ações admin
+  (draft/upcoming/active/completed/cancelled, §5), created_by (owner/admin,
+  §10), max_participants/min_days opcionais.
+- **ChallengeParticipant** (spec §15–§21): UNIQUE(challenge, person), status
+  active/left/removed, join idempotente (10x → 1 linha), leave preserva
+  histórico, rejoin reativa. Apenas CommunityMember ACTIVE participa — membro
+  left/banned da comunidade sai na hora (spec §21).
+- **Privacidade** (spec §25–§26): participar exige
+  `CommunityMember.share_scope_json[metric]==true`; join sem share → 403 com
+  mensagem clara. Desligar o share depois → ineligible/fora do ranking na
+  hora (dinâmico); religar → volta. NUNCA expõe métricas não relacionadas
+  nem dados brutos (spec §24, §90).
+- **Ranking dinâmico** (spec §22, §27–§33): calculado pelo BACKEND com
+  agregação ORM (Avg/Max/Count — sem N+1, §73); dia faltante NÃO é zero
+  (spec §28); ties determinísticos (score desc → days_count desc →
+  joined_at asc, §32); min_days → not_qualified sem posição (§31);
+  paginação + current_user_position.
+- **Finalização** (spec §36–§40): `finalize_wellness_challenges
+  [--challenge <uuid>]` — idempotente (10x → mesmo resultado); congela
+  final_rank/final_score/final_days_count; DailyScore editado DEPOIS não
+  altera o resultado histórico (spec §38). `inspect_wellness_challenge
+  <uuid>` para debug (§41).
+
+### NENHUMA fórmula de saúde nova (spec §1, §86)
+
+Challenges usam APENAS valores já persistidos em DailyScore. A Fase 7 NÃO
+implementa como readiness/sleep/activity/strain são calculados (formulas
+NOT FOUND no audit da Fase 5). Fixtures determinísticas de E2E (A 90/92 → 91;
+B 82/86 → 84) são dados de teste, NÃO saídas de fórmula clínica (spec §7,
+§78). A existência do campo DailyScore não implica fórmula de produção.
+
+### API (community-scoped, spec §60)
+
+- `POST/GET /v1/wellness/communities/{uuid}/challenges/` (create owner/admin;
+  list com filtro ?status=upcoming|active|completed)
+- `GET/PATCH/POST /v1/wellness/communities/{uuid}/challenges/{uuid}/`
+  (detalhe com progresso/posição do usuário; PATCH seguro — metric/
+  aggregation/start_date imutáveis após início, §13; POST cancela, §14)
+- `POST .../join/ | .../leave/` (idempotente; §18–§19)
+- `POST .../participants/{person_uuid}/remove/` (owner/admin, §20)
+- `GET .../ranking/` (§33)
+
+### Flutter (spec §45–§57)
+
+Aba **Desafios** na comunidade (Visão geral / Leaderboard / Desafios /
+Membros / Chat): seções Ativos / Em breve / Concluídos, card com período,
+agregação, participantes e posição. Criar (só owner/admin), detalhe com
+progresso transparente ("Sua média 87.9 · 4 dias válidos · mínimo 3"),
+join com requisito de privacidade explícito, ranking com highlight do
+usuário, resultado congelado pós-finalização, empty states. Modelos
+Challenge/ChallengeProgress/ChallengeRanking/Entry espelham a API (spec §45).
+
+### E2E REAL HML — Fase 7 (22/22, 2026-08-13)
+
+Create (owner 201, member 403) → join idempotente (2 ativos) → join sem
+share 403 → fixtures 90/92 vs 82/86 → ranking [91.0, 84.0] days=2 → sem
+dados brutos → B desliga share → sai na hora → religa → volta → B sai da
+comunidade → excluído → reentra → volta → finalize (comando) → congelado
+[91.0, 84.0] → DailyScore editado → resultado NÃO muda (spec §38).
+
 ## Estrutura do projeto (spec §60)
 
 lib/
@@ -592,10 +663,10 @@ flutter build appbundle --release   # produção
 
 ```bash
 flutter analyze        # 0 issues
-flutter test           # 63 testes
+flutter test           # 72 testes
 ```
 
-Cobertura atual (63 testes):
+Cobertura atual (72 testes):
 - `test/auth_service_test.dart` (11) — login/logout/restoreSession/refresh/
   getAccessToken/getCurrentIdentity; identidade única (login→logout→login).
 - `test/api_client_test.dart` (8) — Bearer **IdToken**, 401→refresh→retry (1x),
