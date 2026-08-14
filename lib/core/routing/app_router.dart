@@ -20,6 +20,7 @@ import '../../features/chat/chat_diagnostic_screen.dart';
 import '../../features/communities/communities_screen.dart';
 import '../../features/communities/community_detail_screen.dart';
 import '../../features/communities/create_community_screen.dart';
+import '../../features/gamification/gamification_screen.dart';
 import '../../features/home/home_screen.dart';
 
 /// Mutable auth status shared between the provider and the router redirect.
@@ -69,6 +70,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/chat/diagnostic',
         builder: (context, state) => const ChatDiagnosticScreen(),
+      ),
+      GoRoute(
+        path: '/gamification',
+        builder: (context, state) => const GamificationScreen(),
       ),
       GoRoute(
         path: '/communities',

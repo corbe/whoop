@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
+import '../../services/gamification_providers.dart';
 import '../../services/score_providers.dart';
 import '../../services/wellness_identity_providers.dart';
 import '../../shared/models/score.dart';
@@ -29,6 +30,11 @@ class HomeScreen extends ConsumerWidget {
             icon: const Icon(Icons.groups_outlined),
             tooltip: 'Comunidades',
             onPressed: () => context.go('/communities'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.emoji_events_outlined),
+            tooltip: 'Progresso',
+            onPressed: () => context.go('/gamification'),
           ),
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
@@ -97,8 +103,38 @@ class HomeScreen extends ConsumerWidget {
                       )
                     : _TodayScoresCard(score: score),
               ),
+              const SizedBox(height: 16),
+              const _ProgressCard(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Fase 8 (spec §54): seção pequena "Seu progresso" no Home — streak +
+/// conquistas, navega para a tela de gamificação.
+class _ProgressCard extends ConsumerWidget {
+  const _ProgressCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summaryAsync = ref.watch(gamificationSummaryProvider);
+    return summaryAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (e, _) => const SizedBox.shrink(),
+      data: (summary) => Card(
+        child: ListTile(
+          leading: const Icon(Icons.emoji_events_outlined, color: Colors.amber),
+          title: Text(
+            '🔥 ${summary.currentStreak} ${summary.currentStreak == 1 ? 'dia' : 'dias'} '
+            '· ${summary.unlockedCount} conquistas',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          subtitle: const Text('Seu progresso'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.go('/gamification'),
         ),
       ),
     );
@@ -109,7 +145,6 @@ class _TodayScoresCard extends StatelessWidget {
   const _TodayScoresCard({required this.score});
 
   final DailyScore score;
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
