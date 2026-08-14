@@ -41,7 +41,9 @@ dependencies:
   amplify_flutter: ^2.14.0
   amplify_auth_cognito: ^2.14.0
   juggle_im: ^0.10.72
-
+  image_picker: ^1.2.3
+  file_selector: ^1.1.0
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -95,3 +97,4 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+

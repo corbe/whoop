@@ -13,6 +13,7 @@ import '../../services/score_providers.dart';
 import '../../shared/models/community.dart';
 import 'community_chat_screen.dart';
 import 'leaderboard_tab.dart';
+import 'notification_settings_screen.dart';
 import 'privacy_screen.dart';
 
 class CommunityDetailScreen extends ConsumerStatefulWidget {
@@ -210,6 +211,20 @@ class _OverviewTab extends ConsumerWidget {
             onPressed: onOpenPrivacy,
             icon: const Icon(Icons.shield_outlined),
             label: const Text('Privacidade / Compartilhamento'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => NotificationSettingsScreen(
+                  communityUuid: community.uuid,
+                  communityName: community.name,
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.notifications_outlined),
+            label: const Text('Notificações'),
           ),
         ],
       ],

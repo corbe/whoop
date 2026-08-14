@@ -57,7 +57,7 @@ class _ChatDiagnosticScreenState extends ConsumerState<ChatDiagnosticScreen> {
     final text = _messageController.text.trim();
     if (target.isEmpty || text.isEmpty) return;
     final juggle = ref.read(juggleImServiceProvider);
-    final result = await juggle.sendPrivateText(target, text);
+    final result = await juggle.sendText(target, 1, text);
     if (!mounted) return;
     setState(() {
       _lastSend = result.ok
@@ -143,24 +143,19 @@ class _ChatDiagnosticScreenState extends ConsumerState<ChatDiagnosticScreen> {
             Text(_lastSend!, style: Theme.of(context).textTheme.bodySmall),
           ],
           const SizedBox(height: 24),
-          // Mensagens recebidas em tempo real.
+          // Mensagens recebidas em tempo real (domínio, spec §5).
           Consumer(
             builder: (context, ref, _) {
-              final messages = ref.watch(juggleMessagesProvider).valueOrNull;
-              final list = messages is List ? messages : (messages == null ? const <dynamic>[] : [messages]);
-              if (list.isEmpty) {
+              final message = ref.watch(juggleMessagesProvider).valueOrNull;
+              if (message == null) {
                 return const Text('Nenhuma mensagem recebida ainda.');
               }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Recebidas (${list.length}):',
-                      style: Theme.of(context).textTheme.titleSmall),
-                  ...list.map((m) => Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text('• $m', style: Theme.of(context).textTheme.bodySmall),
-                      )),
-                ],
+              return Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '• ${message.senderName.isEmpty ? message.senderId : message.senderName}: ${message.text}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               );
             },
           ),

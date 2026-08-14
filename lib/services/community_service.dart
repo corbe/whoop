@@ -97,6 +97,21 @@ class CommunityService {
     return CommunityMember.fromJson(res.data as Map<String, dynamic>);
   }
 
+  /// GET /wellness/communities/{uuid}/notification-preferences/ (Phase 6).
+  Future<String> getNotificationPreference(String uuid) async {
+    final res = await _api.get('$_base/$uuid/notification-preferences/');
+    return ((res.data as Map<String, dynamic>)['mode'] as String?) ?? 'all';
+  }
+
+  /// PATCH /wellness/communities/{uuid}/notification-preferences/ (Phase 6).
+  Future<String> updateNotificationPreference(String uuid, String mode) async {
+    final res = await _api.patch(
+      '$_base/$uuid/notification-preferences/',
+      body: {'mode': mode},
+    );
+    return ((res.data as Map<String, dynamic>)['mode'] as String?) ?? mode;
+  }
+
   List<Community> _parseList(dynamic data) {
     final list = data as List<dynamic>;
     return list

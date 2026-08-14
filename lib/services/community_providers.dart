@@ -40,6 +40,12 @@ class CommunityActionResult {
   final Community? community;
 }
 
+/// Notification preference of the current user in a community (Phase 6).
+final communityNotificationPreferenceProvider =
+    FutureProvider.family<String, String>((ref, uuid) async {
+  return ref.watch(communityServiceProvider).getNotificationPreference(uuid);
+});
+
 /// Controller for community mutations — performs the HTTP call, then
 /// invalidates the relevant providers so lists/detail refresh.
 final communityActionControllerProvider =
