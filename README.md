@@ -3,10 +3,10 @@
 Aplicativo mobile **Flutter/Dart (Android + iOS)** de wellness social — experiência
 social inspirada no WHOOP, com domínio e arquitetura próprios da Noana.
 
-> **Status: FASE 7 — CHALLENGES + PARTICIPANTS + RANKING** (desafios
-> time-bounded por comunidade, join/leave idempotente, privacy gate via
-> share_scope, ranking dinâmico, finalização congelada; E2E HML 22/22).
-> Fases 8–9 em andamento conforme plano.
+> **Status: FASE 8 — GAMIFICATION + ACHIEVEMENTS + BADGES + STREAKS** (11
+> achievements com regras em código, unlock imutável, streaks por score_date
+> com reconstrução de score tardio, pontos/nível leves; E2E HML 18/18).
+> Fase 9 em andamento conforme plano.
 
 ---
 
@@ -592,6 +592,105 @@ dados brutos → B desliga share → sai na hora → religa → volta → B sai 
 comunidade → excluído → reentra → volta → finalize (comando) → congelado
 [91.0, 84.0] → DailyScore editado → resultado NÃO muda (spec §38).
 
+## Fase 8 — Gamification (spec §85)
+
+### Arquitetura
+
+```text
+DailyScore / Challenge / CommunityMember
+        ↓ (eventos + reconciliação)
+AchievementEngine (regras em código, spec §6)
+        ↓
+WellnessAchievement (UNIQUE person+achievement, unlocked_at IMUTÁVEL §9)
+        ↓
+Badges (icon_key estável — spec §10–§11)
+        ↓
+WellnessStreak (UNIQUE person+streak_type — §28)
+        ↓
+GamificationProfile (pontos/nível derivados — §34–§36)
+        ↓
+Flutter: GamificationScreen + Home "Seu progresso"
+```
+
+**A gamificação recompensa participação e consistência. Ela NÃO define novos
+thresholds de saúde nem calcula novos scores (spec §1, §85).** Todos os
+achievements derivam de dados JÁ persistidos; nenhuma fórmula de saúde foi
+inventada (audit Fase 5 permanece).
+
+### Catálogo inicial (11, seed por data migration idempotente — spec §3, §73)
+
+| Code | Regra exata (em código) | Target |
+| :--- | :--- | :--- |
+| FIRST_SCORE | count distinct DailyScore.score_date | 1 |
+| SCORE_7_DAYS | distinct score_date (7 dias registrados, NÃO consecutivos — §18) | 7 |
+| SCORE_30_DAYS | distinct score_date | 30 |
+| FIRST_COMMUNITY | qualquer CommunityMember já existiu (histórico preservado — §20) | 1 |
+| COMMUNITY_3 | CommunityMember status=active (progresso pode diminuir pré-unlock; unlock imutável — §21) | 3 |
+| FIRST_CHALLENGE | ChallengeParticipant existe (removed NÃO conta — §22) | 1 |
+| CHALLENGE_COMPLETED | Challenge.finalized_at!=NULL E final_rank!=NULL (resultado congelado Fase 7 — §23) | 1 |
+| CHALLENGE_3_COMPLETED | idem, count ≥ 3 (§24) | 3 |
+| CHALLENGE_TOP_3 | final_rank IN (1,2,3) — usa final_rank, nunca recalcula (§25) | 1 |
+| STREAK_7 / STREAK_30 | WellnessStreak.best_count ≥ 7 / 30 (consecutivos — §33) | 7/30 |
+
+### Streaks (spec §27–§33)
+
+- streak_type = `daily_score`: dias consecutivos com DailyScore registrado
+  (consistência de REGISTRO, não saúde — §27, §50).
+- Semântica determinística sobre `score_date` (dia wellness, fuso de
+  WellnessProfile.timezone — §29): best = maior corrida; current = corrida
+  terminando no dia mais recente gravado.
+- **Score tardio reconstruído** (§31): 10, 12 gravados → 11 chega depois →
+  rebuild → corrida 3. Fonte de verdade = DailyScore dates, nunca contador.
+- `rebuild_wellness_streaks [--person]` idempotente (§32, §89).
+
+### Engine + reconciliação (spec §13–§16, §57–§59)
+
+- `AchievementEngine.evaluate_person/evaluate_achievement` — idempotente,
+  determinístico, seguro de reexecutar.
+- Triggers pós-evento COM ISOLAMENTO DE FALHA (§15, §57–§58): DailyScore
+  upsert (scores+streak), Community join/leave (community), Challenge
+  join/finalize (challenge) — uma falha de gamificação NUNCA quebra o
+  request de origem.
+- `reconcile_wellness_achievements [--person] [--achievement]` — safety net
+  (§16, §89): reconstrói do banco; 10x → mesmo estado (§65).
+
+### API (identidade só do JWT — §38, §67)
+
+- `GET /v1/wellness/achievements/` — catálogo + estado (progress/target/
+  unlocked/unlocked_at/pontos).
+- `GET /v1/wellness/gamification/summary/` — unlocked_count, total_count,
+  current/best streak, points, level, selected_badges (§39–§43).
+- `GET /v1/wellness/streaks/` — streaks do usuário (§40).
+- `POST /v1/wellness/gamification/select-badges/` — até 3 badges
+  DESBLOQUEADOS (position 1..3, CheckConstraint; §43, §67).
+- Sem person_uuid aceito; sem dados fisiológicos (testes §68, E2E §81).
+
+### Flutter (spec §45–§54)
+
+GamificationScreen (rota /gamification, app bar do Home): header Nível/
+pontos/streak (wording "dias consecutivos com um wellness score registrado"
+— §50), cards de conquista com progresso real (nunca fake — §49), celebração
+leve de unlock deduplicada por sessão (spec §52). Home ganhou a seção "Seu
+progresso" (§54). Modelos espelham a API (spec §45).
+
+### E2E REAL HML — Fase 8 (18/18, 2026-08-14)
+
+Catálogo 11 no HML → upload 1º score → FIRST_SCORE unlocked (trigger) →
+7 dias distintos → SCORE_7_DAYS unlocked → streak current≥7 (dias
+consecutivos) → summary (conquistas+pontos) → challenge finalizado com
+A final_rank=1 → CHALLENGE_COMPLETED + CHALLENGE_TOP_3 unlocked →
+reconcile 3x sem duplicar → streak rebuild idempotente → nenhuma resposta
+com dados fisiológicos → anônimo 401.
+
+### Limitações conhecidas
+
+- Achievements de pontos/nível são config inicial de produto (spec §35),
+  não cientificamente significativos.
+- Badges são icon_keys (Material icons no app); arte final fica para depois
+  (spec §11).
+- Push de achievements não implementado (infra de push continua
+  infrastructure-blocked da Fase 6; §53 — in-app UX é suficiente).
+
 ## Estrutura do projeto (spec §60)
 
 lib/
@@ -663,10 +762,10 @@ flutter build appbundle --release   # produção
 
 ```bash
 flutter analyze        # 0 issues
-flutter test           # 72 testes
+flutter test           # 81 testes
 ```
 
-Cobertura atual (72 testes):
+Cobertura atual (81 testes):
 - `test/auth_service_test.dart` (11) — login/logout/restoreSession/refresh/
   getAccessToken/getCurrentIdentity; identidade única (login→logout→login).
 - `test/api_client_test.dart` (8) — Bearer **IdToken**, 401→refresh→retry (1x),
