@@ -1,0 +1,52 @@
+name: flutter-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  analyze-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.9"
+          channel: stable
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+      - name: Debug APK build
+        run: flutter build apk --debug
+
+  release-aab:
+    runs-on: ubuntu-latest
+    needs: analyze-test
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.9"
+          channel: stable
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build release AAB
+        run: flutter build appbundle --release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-aab
+          path: build/app/outputs/bundle/release/*.aab
+          retention-days: 30
+
+      # Version metadata (spec §6): injected via --dart-define at build time.
+      # Signing (spec §66): keystore + passwords NEVER committed — CI obtains
+      # them from GitHub secrets when a release is configured:
+      #   key.properties generated from secrets ANDROID_KEYSTORE_B64 etc.
