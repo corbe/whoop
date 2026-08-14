@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import '../../services/community_providers.dart';
 import '../../services/score_providers.dart';
 import '../../shared/models/community.dart';
+import 'challenges_tab.dart';
 import 'community_chat_screen.dart';
 import 'leaderboard_tab.dart';
 import 'notification_settings_screen.dart';
@@ -60,6 +61,11 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
     });
   }
 
+  bool _isOwnerOrAdmin(Community community) {
+    final role = community.currentUserRole;
+    return role == 'owner' || role == 'admin';
+  }
+
   @override
   Widget build(BuildContext context) {
     final communityAsync = ref.watch(communityDetailProvider(widget.uuid));
@@ -71,6 +77,7 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
           tabs: const [
             Tab(text: 'Visão geral'),
             Tab(text: 'Leaderboard'),
+            Tab(text: 'Desafios'),
             Tab(text: 'Membros'),
             Tab(text: 'Chat'),
           ],
@@ -84,6 +91,11 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
           children: [
             _OverviewTab(community: community, onOpenPrivacy: () => _openPrivacy(community)),
             LeaderboardTab(communityUuid: widget.uuid),
+            ChallengesTab(
+              communityUuid: widget.uuid,
+              communityName: community.name,
+              isOwnerOrAdmin: _isOwnerOrAdmin(community),
+            ),
             _MembersTab(uuid: widget.uuid, community: community),
             _ChatTab(community: community),
           ],
@@ -98,7 +110,6 @@ class _OverviewTab extends ConsumerWidget {
 
   final Community community;
   final VoidCallback onOpenPrivacy;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
