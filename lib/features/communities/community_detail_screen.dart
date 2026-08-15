@@ -10,7 +10,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../services/community_providers.dart';
 import '../../services/score_providers.dart';
+import '../../services/social_identity_provider.dart';
+import '../../shared/models/social_identity.dart';
 import '../../shared/models/community.dart';
+import '../../shared/models/score.dart';
 import 'challenges_tab.dart';
 import 'community_chat_screen.dart';
 import 'leaderboard_tab.dart';
@@ -34,7 +37,7 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -50,8 +53,8 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
         builder: (_) => PrivacyScreen(
           communityUuid: community.uuid,
           communityName: community.name,
+          initialScope: CommunityShareScope.fromJson(community.shareScopeJson),
         ),
-        settings: RouteSettings(arguments: community.shareScopeJson),
       ),
     ).then((_) {
       if (mounted) {
@@ -315,6 +318,7 @@ class _MembersTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final membersAsync = ref.watch(communityMembersProvider(uuid));
+    final identities = ref.watch(socialIdentityProvider(uuid));
     return membersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       error: (e, _) => Center(child: Text('Falha: $e')),
@@ -329,19 +333,19 @@ class _MembersTab extends ConsumerWidget {
             itemCount: members.length,
             itemBuilder: (context, i) {
               final member = members[i];
+              final identity = identities.resolve(member.personUuid) ??
+                  SocialIdentity(personUuid: member.personUuid);
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                  foregroundImage: member.avatarUrl.isNotEmpty
-                      ? NetworkImage(member.avatarUrl)
+                  foregroundImage: identity.hasAvatar
+                      ? NetworkImage(identity.avatarUrl)
                       : null,
-                  child: member.avatarUrl.isEmpty
-                      ? Text(_initial(member.displayName))
-                      : null,
+                  child: identity.hasAvatar
+                      ? null
+                      : Text(identity.initial),
                 ),
-                title: Text(member.displayName.isEmpty
-                    ? member.personUuid.substring(0, 8)
-                    : member.displayName),
+                title: Text(identity.safeDisplayName),
                 subtitle: Text('${member.role} • ${member.status}'),
                 trailing: community.isOwner && member.personUuid != community.ownerPersonUuid
                     ? _memberActions(context, ref, member)
@@ -394,11 +398,6 @@ class _MembersTab extends ConsumerWidget {
       ],
     );
   }
-
-  String _initial(String name) {
-    if (name.isEmpty) return '?';
-    return name[0].toUpperCase();
-  }
 }
 
 class _ChatTab extends ConsumerWidget {
@@ -424,6 +423,7 @@ class _ChatTab extends ConsumerWidget {
         : community.deterministicGroupId;
     return CommunityChatScreen(
       communityName: community.name,
+      communityUuid: community.uuid,
       groupId: groupId,
     );
   }

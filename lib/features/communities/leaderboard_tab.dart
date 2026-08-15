@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/score_providers.dart';
 import '../../services/wellness_identity_providers.dart';
 import '../../shared/models/score.dart';
+import '../../shared/models/social_identity.dart';
 
 class LeaderboardTab extends ConsumerStatefulWidget {
   const LeaderboardTab({super.key, required this.communityUuid});
@@ -129,14 +130,19 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
   Widget _entryTile(BuildContext context, CommunityRanking ranking, CommunityRankingEntry e, String? myUuid) {
     final isMe = myUuid != null && e.personUuid == myUuid;
     final highlight = isMe || (ranking.currentUserPosition == e.position);
+    final identity = SocialIdentity(
+      personUuid: e.personUuid,
+      displayName: e.displayName,
+      avatarUrl: e.avatarUrl,
+    );
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-        foregroundImage: e.avatarUrl.isNotEmpty ? NetworkImage(e.avatarUrl) : null,
-        child: e.avatarUrl.isEmpty ? Text('${e.position}') : null,
+        foregroundImage: identity.hasAvatar ? NetworkImage(identity.avatarUrl) : null,
+        child: identity.hasAvatar ? null : Text(identity.initial),
       ),
       title: Text(
-        e.displayName,
+        identity.safeDisplayName,
         style: TextStyle(
           fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
         ),

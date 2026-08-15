@@ -43,7 +43,7 @@ dependencies:
   juggle_im: ^0.10.72
   image_picker: ^1.2.3
   file_selector: ^1.1.0
-  
+  emoji_picker_flutter: ^4.5.3
 dev_dependencies:
   flutter_test:
     sdk: flutter

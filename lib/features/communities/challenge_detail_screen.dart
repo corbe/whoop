@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/challenge_providers.dart';
 import '../../services/wellness_identity_providers.dart';
+import '../../shared/models/social_identity.dart';
 import '../../shared/models/challenge.dart';
 
 class ChallengeDetailScreen extends ConsumerWidget {
@@ -289,8 +290,15 @@ class _RankingSection extends ConsumerWidget {
                         ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
-                title: Text(e.displayName,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                title: Text(
+                  SocialIdentity(
+                    personUuid: e.personUuid,
+                    displayName: e.displayName,
+                    avatarUrl: e.avatarUrl,
+                  ).safeDisplayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 subtitle: e.qualified
                     ? Text('${e.daysCount} ${e.daysCount == 1 ? 'dia' : 'dias'}')
                     : const Text('Não qualificado'),

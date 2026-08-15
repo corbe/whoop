@@ -9,23 +9,30 @@ library;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart'
+    show BottomActionBarConfig, Category, CategoryViewConfig, Config, EmojiPicker, EmojiViewConfig;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:juggle_im/model/conversation.dart';
 
 import '../../services/chat_attachment_service.dart';
 import '../../services/chat_controller.dart';
-import '../../services/juggle_im_service.dart';
+import '../../services/reaction_providers.dart';
+import '../../services/social_identity_provider.dart';
 import '../../shared/models/chat.dart';
+import '../../shared/models/social_identity.dart';
 
 class CommunityChatScreen extends ConsumerStatefulWidget {
   const CommunityChatScreen({
     super.key,
     required this.communityName,
+    required this.communityUuid,
     required this.groupId,
   });
 
   final String communityName;
+  final String communityUuid;
   final String groupId;
 
   @override
@@ -123,11 +130,15 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
   @override
   Widget build(BuildContext context) {
     final state = _state;
+    final identities = ref.watch(socialIdentityProvider(widget.communityUuid));
+    final catalogAsync = ref.watch(reactionCatalogProvider);
+    final quickReactions = catalogAsync.valueOrNull?.quick ??
+        const ['❤️', '👍', '🔥', '😂', '👏', '💪'];
     return Scaffold(
       appBar: AppBar(title: Text(widget.communityName)),
       body: Column(
         children: [
-          Expanded(child: _buildMessages(state)),
+          Expanded(child: _buildMessages(state, identities, quickReactions)),
           if (state?.replyTarget != null) _replyBar(state!.replyTarget!),
           _buildInputBar(),
         ],
@@ -158,7 +169,7 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
     );
   }
 
-  Widget _buildMessages(ChatState? state) {
+  Widget _buildMessages(ChatState? state, SocialIdentityResolver identities, List<String> quickReactions) {
     if (state == null || state.initialLoading) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
@@ -189,14 +200,24 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
       itemCount: state.messages.length,
       itemBuilder: (context, i) {
         final message = state.messages[i];
+        final senderIdentity = message.senderName == 'Você'
+            ? SocialIdentity(personUuid: message.senderId, displayName: 'Você')
+            : identities.resolveJuggleId(message.senderId);
+        // Sender do reply: o SDK pode mandar senderDisplayName vazio/bruto —
+        // resolve pela MESMA identidade (fallback "Membro", nunca id).
+        final replyRef = message.replyTo?.copyWith(
+          originalSenderName:
+              identities.resolveJuggleId(message.replyTo!.originalSenderId)
+                  .safeDisplayName,
+        );
         return _MessageBubble(
-          message: message,
+          message: message.copyWith(replyTo: replyRef),
+          senderIdentity: senderIdentity,
+          quickReactions: quickReactions,
           onReply: () => _controller.setReplyTarget(ChatReplyRef(
             originalMessageId: message.id,
             originalSenderId: message.senderId,
-            originalSenderName: message.senderName.isEmpty
-                ? message.senderId.substring(0, 8)
-                : message.senderName,
+            originalSenderName: senderIdentity.safeDisplayName,
             originalPreview: message.text.isEmpty
                 ? (message.type == ChatMessageType.image
                     ? '[Imagem]'
@@ -205,6 +226,15 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
           )),
           onReact: (emoji) async {
             await _controller.addReaction(message.id, emoji);
+          },
+          onToggleReaction: (emoji, mine) async {
+            // Toggle conforme semântica do controller atual: se já é minha,
+            // remove; senão adiciona. Nenhuma semântica paralela.
+            if (mine) {
+              await _controller.removeReaction(message.id, emoji);
+            } else {
+              await _controller.addReaction(message.id, emoji);
+            }
           },
           onRetry: () => _controller.retryFailed(message),
           onScrollToBottom: () => _atBottom = true,
@@ -256,16 +286,22 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
     required this.message,
+    required this.senderIdentity,
+    required this.quickReactions,
     required this.onReply,
     required this.onReact,
+    required this.onToggleReaction,
     required this.onRetry,
     required this.onScrollToBottom,
     required this.onScrollAway,
   });
 
   final ChatMessage message;
+  final SocialIdentity senderIdentity;
+  final List<String> quickReactions;
   final VoidCallback onReply;
   final void Function(String emoji) onReact;
+  final void Function(String emoji, bool mine) onToggleReaction;
   final VoidCallback onRetry;
   final VoidCallback onScrollToBottom;
   final VoidCallback onScrollAway;
@@ -294,11 +330,30 @@ class _MessageBubble extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (!isMine && message.senderName.isNotEmpty)
-                  Text(
-                    message.senderName,
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(color: theme.colorScheme.primary),
+                if (!isMine)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (senderIdentity.hasAvatar) ...[
+                          CircleAvatar(
+                            radius: 8,
+                            foregroundImage:
+                                NetworkImage(senderIdentity.avatarUrl),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Flexible(
+                          child: Text(
+                            senderIdentity.safeDisplayName,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall
+                                ?.copyWith(color: theme.colorScheme.primary),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 if (message.replyTo != null)
                   _ReplyPreview(reply: message.replyTo!, onTap: () {}),
@@ -309,7 +364,10 @@ class _MessageBubble extends StatelessWidget {
                 else
                   Text(message.text),
                 if (message.reactions.isNotEmpty)
-                  _ReactionRow(reactions: message.reactions),
+                  _ReactionRow(
+                    reactions: message.reactions,
+                    onToggle: onToggleReaction,
+                  ),
                 if (message.deliveryStatus == ChatMessageStatus.sending)
                   Text('enviando…', style: theme.textTheme.labelSmall)
                 else if (message.deliveryStatus == ChatMessageStatus.failed)
@@ -344,7 +402,7 @@ class _MessageBubble extends StatelessWidget {
   void _showActions(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -352,40 +410,112 @@ class _MessageBubble extends StatelessWidget {
               leading: const Icon(Icons.reply),
               title: const Text('Responder'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
                 onReply();
               },
             ),
-            ExpansionTile(
+            ListTile(
               leading: const Icon(Icons.emoji_emotions_outlined),
               title: const Text('Reagir'),
-              children: [
-                Wrap(
-                  spacing: 8,
-                  children: JuggleImService.allowedReactions
-                      .map((emoji) => IconButton(
-                            icon: Text(emoji, style: const TextStyle(fontSize: 24)),
-                            onPressed: () {
-                              Navigator.pop(context);
-                              onReact(emoji);
-                            },
-                          ))
-                      .toList(),
-                ),
-              ],
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _showReactionPicker(context);
+              },
             ),
             ListTile(
               leading: const Icon(Icons.copy),
               title: const Text('Copiar'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
                 if (message.text.isNotEmpty) {
-                  // ignore: avoid_print
-                  print('copy: ${message.text}');
+                  Clipboard.setData(ClipboardData(text: message.text));
                 }
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Picker de reação: barra rápida (configuração do backend) + 😊 abre o
+  /// emoji picker completo.
+  void _showReactionPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Reagir',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ...quickReactions.map((emoji) => IconButton(
+                        icon: Text(emoji, style: const TextStyle(fontSize: 26)),
+                        onPressed: () {
+                          Navigator.pop(sheetContext);
+                          onReact(emoji);
+                        },
+                      )),
+                  IconButton(
+                    icon: const Text('😊', style: TextStyle(fontSize: 26)),
+                    tooltip: 'Mais emojis',
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _showFullEmojiPicker(context);
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Emoji picker completo (emoji_picker_flutter — BSD-2-Clause, mantido,
+  /// compatível com o SDK do projeto). Busca, categorias e recentes.
+  void _showFullEmojiPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: EmojiPicker(
+            textEditingController: TextEditingController(),
+            config: Config(
+              height: MediaQuery.of(context).size.height * 0.6 - 40,
+              checkPlatformCompatibility: true,
+              emojiViewConfig: const EmojiViewConfig(
+                emojiSizeMax: 28,
+                columns: 8,
+                recentsLimit: 12,
+              ),
+              categoryViewConfig: const CategoryViewConfig(
+                initCategory: Category.RECENT,
+              ),
+              bottomActionBarConfig: const BottomActionBarConfig(
+                showBackspaceButton: false,
+                showSearchViewButton: true,
+              ),
+            ),
+            onEmojiSelected: (category, emoji) {
+              Navigator.pop(sheetContext);
+              onReact(emoji.emoji);
+            },
+          ),
         ),
       ),
     );
@@ -435,9 +565,10 @@ class _ReplyPreview extends StatelessWidget {
 }
 
 class _ReactionRow extends StatelessWidget {
-  const _ReactionRow({required this.reactions});
+  const _ReactionRow({required this.reactions, required this.onToggle});
 
   final List<ChatReaction> reactions;
+  final void Function(String emoji, bool mine) onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -446,18 +577,22 @@ class _ReactionRow extends StatelessWidget {
       child: Wrap(
         spacing: 6,
         children: reactions
-            .map((r) => Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: r.mine
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.black12),
+            .map((r) => InkWell(
+                  onTap: () => onToggle(r.emoji, r.mine),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: r.mine
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.black12),
+                    ),
+                    child: Text('${r.emoji} ${r.count}',
+                        style: Theme.of(context).textTheme.labelMedium),
                   ),
-                  child: Text('${r.emoji} ${r.count}',
-                      style: Theme.of(context).textTheme.labelMedium),
                 ))
             .toList(),
       ),

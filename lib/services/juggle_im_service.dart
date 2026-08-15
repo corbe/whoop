@@ -352,11 +352,13 @@ class JuggleImService {
   }
 
   // ── reações (spec §10–§12) ─────────────────────────────────────────
-
-  static const List<String> allowedReactions = ['❤️', '👍', '🔥', '😂', '👏', '💪'];
+  //
+  // O catálogo/quick reactions vêm do backend (GET /wellness/chat/reactions/,
+  // controlado via Django Admin). O SDK aceita QUALQUER emoji como reactionId
+  // — sem allowlist hardcoded aqui (ela quebraria emojis do catálogo/picker).
 
   Future<bool> addReaction(String messageId, String conversationId, String emoji) async {
-    if (!allowedReactions.contains(emoji)) return false;
+    if (emoji.trim().isEmpty) return false;
     final code = await _sdk.addMessageReaction(
       messageId,
       Conversation(ConversationType.group, conversationId),

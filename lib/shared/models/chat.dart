@@ -56,6 +56,7 @@ class ChatMessage {
     ChatMessageStatus? deliveryStatus,
     bool? readStatus,
     bool? localPending,
+    ChatReplyRef? replyTo,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -93,6 +94,13 @@ class ChatReplyRef {
   final String originalSenderId;
   final String originalSenderName;
   final String originalPreview;
+
+  ChatReplyRef copyWith({String? originalSenderName}) => ChatReplyRef(
+        originalMessageId: originalMessageId,
+        originalSenderId: originalSenderId,
+        originalSenderName: originalSenderName ?? this.originalSenderName,
+        originalPreview: originalPreview,
+      );
 
   Map<String, dynamic> toJson() => {
         'original_message_id': originalMessageId,
@@ -135,6 +143,58 @@ class ChatReaction {
 
   ChatReaction copyWith({int? count, bool? mine}) =>
       ChatReaction(emoji: emoji, count: count ?? this.count, mine: mine ?? this.mine);
+}
+
+/// Reação configurável do catálogo Wellness (Community UX hardening).
+///
+/// O catálogo final vem do backend (GET /v1/wellness/chat/reactions/),
+/// controlado via Django Admin — NÃO é hardcoded no app. Campos públicos:
+/// emoji, label, category, sort_order, is_quick.
+class WellnessReaction {
+  const WellnessReaction({
+    required this.emoji,
+    this.label = '',
+    this.category = 'social',
+    this.sortOrder = 0,
+    this.isQuick = false,
+  });
+
+  final String emoji;
+  final String label;
+  final String category;
+  final int sortOrder;
+  final bool isQuick;
+
+  factory WellnessReaction.fromJson(Map<String, dynamic> json) {
+    return WellnessReaction(
+      emoji: json['emoji'] as String,
+      label: (json['label'] as String?) ?? '',
+      category: (json['category'] as String?) ?? 'social',
+      sortOrder: (json['sort_order'] as int?) ?? 0,
+      isQuick: (json['is_quick'] as bool?) ?? false,
+    );
+  }
+}
+
+/// Catálogo de reações: quick reactions (barra rápida) + catálogo completo.
+class ReactionCatalog {
+  const ReactionCatalog({required this.reactions, required this.quick});
+
+  final List<WellnessReaction> reactions;
+
+  /// Emojis da barra rápida (is_quick, na ordem configurada).
+  final List<String> quick;
+
+  factory ReactionCatalog.fromList(List<dynamic> items) {
+    final reactions = items
+        .map((e) => WellnessReaction.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final quick = reactions
+        .where((r) => r.isQuick)
+        .map((r) => r.emoji)
+        .toList();
+    return ReactionCatalog(reactions: reactions, quick: quick);
+  }
 }
 
 /// Conversation summary for the chat list (spec §52).
