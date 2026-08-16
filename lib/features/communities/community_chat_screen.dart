@@ -22,6 +22,7 @@ import '../../services/reaction_providers.dart';
 import '../../services/social_identity_provider.dart';
 import '../../shared/models/chat.dart';
 import '../../shared/models/social_identity.dart';
+import 'member_profile_screen.dart';
 
 class CommunityChatScreen extends ConsumerStatefulWidget {
   const CommunityChatScreen({
@@ -43,6 +44,7 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   final _attachmentService = ChatAttachmentService();
+  final Map<String, GlobalKey> _messageKeys = {};
   StreamSubscription? _stateSub;
   ChatState? _state;
   bool _atBottom = true;
@@ -85,6 +87,20 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
   void _scrollToBottom() {
     if (!_scrollController.hasClients) return;
     _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+  }
+
+  /// Rola até a mensagem original de um reply — no-op seguro quando a
+  /// mensagem ainda não está carregada no estado local (spec: não crashar).
+  void _scrollToOriginal(String messageId) {
+    final key = _messageKeys[messageId];
+    final ctx = key?.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: 0.3,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   Future<void> _send() async {
@@ -210,10 +226,27 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
               identities.resolveJuggleId(message.replyTo!.originalSenderId)
                   .safeDisplayName,
         );
-        return _MessageBubble(
-          message: message.copyWith(replyTo: replyRef),
-          senderIdentity: senderIdentity,
-          quickReactions: quickReactions,
+        final messageKey = _messageKeys.putIfAbsent(message.id, GlobalKey.new);
+        return KeyedSubtree(
+          key: messageKey,
+          child: _MessageBubble(
+            message: message.copyWith(replyTo: replyRef),
+            senderIdentity: senderIdentity,
+            quickReactions: quickReactions,
+            onOpenProfile: () {
+            final personUuid =
+                identities.resolveJuggleId(message.senderId).personUuid;
+            if (personUuid.isEmpty) return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MemberProfileScreen(
+                  communityUuid: widget.communityUuid,
+                  personUuid: personUuid,
+                ),
+              ),
+            );
+          },
           onReply: () => _controller.setReplyTarget(ChatReplyRef(
             originalMessageId: message.id,
             originalSenderId: message.senderId,
@@ -239,6 +272,10 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
           onRetry: () => _controller.retryFailed(message),
           onScrollToBottom: () => _atBottom = true,
           onScrollAway: () => _atBottom = false,
+          onTapReplyPreview: message.replyTo == null
+              ? null
+              : () => _scrollToOriginal(message.replyTo!.originalMessageId),
+          ),
         );
       },
     );
@@ -259,6 +296,11 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
               icon: const Icon(Icons.attach_file),
               tooltip: 'Enviar arquivo',
               onPressed: _sendFile,
+            ),
+            IconButton(
+              icon: const Text('😊', style: TextStyle(fontSize: 20)),
+              tooltip: 'Emoji na mensagem',
+              onPressed: _openEmojiComposer,
             ),
             Expanded(
               child: TextField(
@@ -281,6 +323,54 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
       ),
     );
   }
+
+  /// Insere emoji no texto da mensagem (composer) — NÃO é reação.
+  void _insertEmoji(String emoji) {
+    final text = _messageController.text;
+    final selection = _messageController.selection;
+    final start = selection.isValid ? selection.start : text.length;
+    final end = selection.isValid ? selection.end : text.length;
+    final updated = text.replaceRange(start, end, emoji);
+    _messageController.value = TextEditingValue(
+      text: updated,
+      selection: TextSelection.collapsed(offset: start + emoji.length),
+    );
+  }
+
+  /// Picker de emoji para o composer (fica aberto para inserir vários).
+  void _openEmojiComposer() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.5,
+          child: EmojiPicker(
+            textEditingController: TextEditingController(),
+            config: Config(
+              height: MediaQuery.of(context).size.height * 0.5 - 40,
+              checkPlatformCompatibility: true,
+              emojiViewConfig: const EmojiViewConfig(
+                emojiSizeMax: 28,
+                columns: 8,
+                recentsLimit: 12,
+              ),
+              categoryViewConfig: const CategoryViewConfig(
+                initCategory: Category.RECENT,
+              ),
+              bottomActionBarConfig: const BottomActionBarConfig(
+                showBackspaceButton: true,
+                showSearchViewButton: true,
+              ),
+            ),
+            onEmojiSelected: (category, emoji) {
+              _insertEmoji(emoji.emoji);
+            },
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _MessageBubble extends StatelessWidget {
@@ -288,23 +378,27 @@ class _MessageBubble extends StatelessWidget {
     required this.message,
     required this.senderIdentity,
     required this.quickReactions,
+    required this.onOpenProfile,
     required this.onReply,
     required this.onReact,
     required this.onToggleReaction,
     required this.onRetry,
     required this.onScrollToBottom,
     required this.onScrollAway,
+    this.onTapReplyPreview,
   });
 
   final ChatMessage message;
   final SocialIdentity senderIdentity;
   final List<String> quickReactions;
+  final VoidCallback onOpenProfile;
   final VoidCallback onReply;
   final void Function(String emoji) onReact;
   final void Function(String emoji, bool mine) onToggleReaction;
   final VoidCallback onRetry;
   final VoidCallback onScrollToBottom;
   final VoidCallback onScrollAway;
+  final VoidCallback? onTapReplyPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -333,30 +427,37 @@ class _MessageBubble extends StatelessWidget {
                 if (!isMine)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 2),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (senderIdentity.hasAvatar) ...[
-                          CircleAvatar(
-                            radius: 8,
-                            foregroundImage:
-                                NetworkImage(senderIdentity.avatarUrl),
+                    child: InkWell(
+                      onTap: onOpenProfile,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (senderIdentity.hasAvatar) ...[
+                            CircleAvatar(
+                              radius: 8,
+                              foregroundImage:
+                                  NetworkImage(senderIdentity.avatarUrl),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Flexible(
+                            child: Text(
+                              senderIdentity.safeDisplayName,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelSmall
+                                  ?.copyWith(color: theme.colorScheme.primary),
+                            ),
                           ),
-                          const SizedBox(width: 6),
                         ],
-                        Flexible(
-                          child: Text(
-                            senderIdentity.safeDisplayName,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.labelSmall
-                                ?.copyWith(color: theme.colorScheme.primary),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 if (message.replyTo != null)
-                  _ReplyPreview(reply: message.replyTo!, onTap: () {}),
+                  _ReplyPreview(
+                    reply: message.replyTo!,
+                    onTap: onTapReplyPreview ?? () {},
+                  ),
                 if (message.type == ChatMessageType.image)
                   _ImageContent(attachment: message.attachments.first)
                 else if (message.type == ChatMessageType.file)
@@ -430,6 +531,12 @@ class _MessageBubble extends StatelessWidget {
                 Navigator.pop(sheetContext);
                 if (message.text.isNotEmpty) {
                   Clipboard.setData(ClipboardData(text: message.text));
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(const SnackBar(
+                      content: Text('Mensagem copiada'),
+                      duration: Duration(seconds: 2),
+                    ));
                 }
               },
             ),

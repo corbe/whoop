@@ -13,6 +13,7 @@ import '../../services/wellness_identity_providers.dart';
 import '../../shared/models/social_identity.dart';
 import '../../shared/models/challenge.dart';
 import 'challenge_status_ui.dart';
+import 'member_profile_screen.dart';
 
 class ChallengeDetailScreen extends ConsumerWidget {
   const ChallengeDetailScreen({
@@ -464,6 +465,15 @@ class _RankingSection extends ConsumerWidget {
                 trailing: Text(
                   e.score.toStringAsFixed(1),
                   style: Theme.of(context).textTheme.titleMedium,
+                ),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MemberProfileScreen(
+                      communityUuid: communityUuid,
+                      personUuid: e.personUuid,
+                    ),
+                  ),
                 ),
               ),
             );

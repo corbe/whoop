@@ -17,6 +17,7 @@ import '../../shared/models/score.dart';
 import 'challenges_tab.dart';
 import 'community_chat_screen.dart';
 import 'leaderboard_tab.dart';
+import 'member_profile_screen.dart';
 import 'notification_settings_screen.dart';
 import 'privacy_screen.dart';
 
@@ -350,6 +351,15 @@ class _MembersTab extends ConsumerWidget {
                 trailing: community.isOwner && member.personUuid != community.ownerPersonUuid
                     ? _memberActions(context, ref, member)
                     : null,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MemberProfileScreen(
+                      communityUuid: uuid,
+                      personUuid: member.personUuid,
+                    ),
+                  ),
+                ),
               );
             },
           ),

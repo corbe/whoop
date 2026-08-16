@@ -11,6 +11,7 @@ import '../../services/score_providers.dart';
 import '../../services/wellness_identity_providers.dart';
 import '../../shared/models/score.dart';
 import '../../shared/models/social_identity.dart';
+import 'member_profile_screen.dart';
 
 class LeaderboardTab extends ConsumerStatefulWidget {
   const LeaderboardTab({super.key, required this.communityUuid});
@@ -76,10 +77,22 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
             error: (e, _) => Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text(
-                  'Falha ao carregar ranking: $e',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Falha ao carregar ranking: $e',
+                      textAlign: TextAlign.center,
+                      style:
+                          TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () =>
+                          ref.invalidate(communityRankingProvider),
+                      child: const Text('Tentar novamente'),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -135,17 +148,34 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
       displayName: e.displayName,
       avatarUrl: e.avatarUrl,
     );
+    final medal = switch (e.position) {
+      1 => '🥇',
+      2 => '🥈',
+      3 => '🥉',
+      _ => null,
+    };
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
         foregroundImage: identity.hasAvatar ? NetworkImage(identity.avatarUrl) : null,
         child: identity.hasAvatar ? null : Text(identity.initial),
       ),
-      title: Text(
-        identity.safeDisplayName,
-        style: TextStyle(
-          fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
-        ),
+      title: Row(
+        children: [
+          if (medal != null) ...[
+            Text(medal, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              identity.safeDisplayName,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+        ],
       ),
       subtitle: Text('${e.daysCount} dia(s) de dados'),
       trailing: Text(
@@ -155,7 +185,23 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
               fontWeight: FontWeight.w600,
             ),
       ),
-      tileColor: isMe ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
+      tileColor: isMe
+          ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4)
+          : (medal != null
+              ? Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withValues(alpha: 0.5)
+              : null),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MemberProfileScreen(
+            communityUuid: widget.communityUuid,
+            personUuid: e.personUuid,
+          ),
+        ),
+      ),
     );
   }
 }

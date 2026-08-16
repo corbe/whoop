@@ -8,6 +8,7 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../shared/models/community.dart';
+import '../shared/models/social_profile.dart';
 import 'community_service.dart';
 
 /// My Communities (communities where the current user has membership).
@@ -30,6 +31,15 @@ final communityDetailProvider =
 final communityMembersProvider =
     FutureProvider.family<List<CommunityMember>, String>((ref, uuid) async {
   return ref.watch(communityServiceProvider).getMembers(uuid);
+});
+
+/// Member social profile (family by community+person) — SOCIAL data only.
+final memberSocialProfileProvider = FutureProvider.family<
+    MemberSocialProfile, ({String communityUuid, String personUuid})>(
+    (ref, params) async {
+  return ref
+      .watch(communityServiceProvider)
+      .getMemberSocialProfile(params.communityUuid, params.personUuid);
 });
 
 /// Result of a community action (join/leave/ban/unban/role/create).

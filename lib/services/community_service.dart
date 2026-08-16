@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/network/api_client.dart';
 import '../core/providers.dart';
 import '../shared/models/community.dart';
+import '../shared/models/social_profile.dart';
 
 class CommunityService {
   CommunityService({required ApiClient apiClient}) : _api = apiClient;
@@ -110,6 +111,14 @@ class CommunityService {
       body: {'mode': mode},
     );
     return ((res.data as Map<String, dynamic>)['mode'] as String?) ?? mode;
+  }
+
+  /// GET /wellness/communities/{uuid}/members/{personUuid}/social-profile/
+  /// (Social Phase) — SOCIAL data only; never physiological.
+  Future<MemberSocialProfile> getMemberSocialProfile(
+      String uuid, String personUuid) async {
+    final res = await _api.get('$_base/$uuid/members/$personUuid/social-profile/');
+    return MemberSocialProfile.fromJson(res.data as Map<String, dynamic>);
   }
 
   List<Community> _parseList(dynamic data) {
