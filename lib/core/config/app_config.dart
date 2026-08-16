@@ -18,6 +18,8 @@ class AppConfig {
     required this.juggleApiUrl,
     required this.juggleNavUrl,
     required this.juggleWsUrl,
+    required this.cognitoPoolId,
+    required this.cognitoClientId,
   });
 
   final AppEnvironment environment;
@@ -33,6 +35,15 @@ class AppConfig {
 
   /// JuggleIM WebSocket URL.
   final String juggleWsUrl;
+
+  /// AWS Cognito user pool (env-scoped — wellness pools differ from the
+  /// clinical SSO pool; the HML backend validates the IdToken `aud` claim
+  /// against the pool's app client).
+  final String cognitoPoolId;
+
+  /// AWS Cognito app client id (must match the backend's COGNITO_CLIENT_ID /
+  /// COGNITO_AUDIENCE for the target environment).
+  final String cognitoClientId;
 
   bool get isProd => environment == AppEnvironment.prod;
   bool get isHml => environment == AppEnvironment.hml;
@@ -63,6 +74,8 @@ class AppConfig {
     juggleApiUrl: 'https://juggleim-api.hml.noana.link',
     juggleNavUrl: 'https://juggleim-nav.hml.noana.link',
     juggleWsUrl: 'wss://juggleim-ws.hml.noana.link',
+    cognitoPoolId: 'us-east-1_BFGyiLUlb',
+    cognitoClientId: '6dj5pdv3fnrg8jbknu12ljg30k',
   );
 
   static const AppConfig _hml = AppConfig(
@@ -71,6 +84,8 @@ class AppConfig {
     juggleApiUrl: 'https://juggleim-api.hml.noana.link',
     juggleNavUrl: 'https://juggleim-nav.hml.noana.link',
     juggleWsUrl: 'wss://juggleim-ws.hml.noana.link',
+    cognitoPoolId: 'us-east-1_BFGyiLUlb',
+    cognitoClientId: '6dj5pdv3fnrg8jbknu12ljg30k',
   );
 
   static const AppConfig _prod = AppConfig(
@@ -79,6 +94,8 @@ class AppConfig {
     juggleApiUrl: 'https://juggleim-api.noana.link',
     juggleNavUrl: 'https://juggleim-nav.noana.link',
     juggleWsUrl: 'wss://juggleim-ws.noana.link',
+    cognitoPoolId: 'us-east-1_YlgSPEfCc',
+    cognitoClientId: '40h05k8dale4f4bdr14ccgms79',
   );
 
   static AppConfig forEnvironment(AppEnvironment env) {

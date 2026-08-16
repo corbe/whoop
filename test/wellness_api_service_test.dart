@@ -43,6 +43,8 @@ const _bootstrapJson = {
 void main() {
   const config = AppConfig(
     environment: AppEnvironment.hml,
+    cognitoPoolId: 'us-east-1_BFGyiLUlb',
+    cognitoClientId: '6dj5pdv3fnrg8jbknu12ljg30k',
     wellnessApiBaseUrl: 'https://api.hml.noana.link/v1',
     juggleApiUrl: 'https://juggleim-api.hml.noana.link',
     juggleNavUrl: 'https://juggleim-nav.hml.noana.link',

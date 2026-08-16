@@ -17,7 +17,7 @@ final secureStorageProvider = Provider<SecureStorage>((ref) => SecureStorage());
 /// Auth service (Cognito via Amplify).
 final authServiceProvider = Provider<AuthService>((ref) {
   final service = AuthService(
-    gateway: AmplifyCognitoGateway(),
+    gateway: AmplifyCognitoGateway(config: ref.watch(appConfigProvider)),
     storage: ref.watch(secureStorageProvider),
   );
   ref.onDispose(service.dispose);

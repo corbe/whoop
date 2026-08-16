@@ -3,9 +3,10 @@
 /// Responsibilities: login, logout, restoreSession, refreshToken,
 /// getAccessToken, getIdToken, getCurrentIdentity.
 ///
-/// Backed by AWS Amplify + the shared Noana Cognito user pool
-/// (`us-east-1_lgjiHS5hH`). The app never talks to JuggleIM auth — Cognito is
-/// the single source of authentication (spec §11).
+/// Backed by AWS Amplify + the Noana Wellness Cognito user pool (env-scoped:
+/// hml `us-east-1_BFGyiLUlb` / prod `us-east-1_YlgSPEfCc` — NOT the clinical
+/// SSO pool). The app never talks to JuggleIM auth — Cognito is the single
+/// source of authentication (spec §11).
 library;
 
 import 'dart:async';
@@ -13,6 +14,7 @@ import 'dart:async';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart' hide AuthException;
 
+import '../config/app_config.dart';
 import '../storage/secure_storage.dart';
 
 /// Current auth state exposed to the UI layer.
@@ -90,7 +92,9 @@ abstract interface class CognitoGateway {
 
 /// Default gateway backed by the Amplify Cognito plugin.
 class AmplifyCognitoGateway implements CognitoGateway {
-  AmplifyCognitoGateway();
+  AmplifyCognitoGateway({required AppConfig config}) : _config = config;
+
+  final AppConfig _config;
 
   bool _configured = false;
 
@@ -99,7 +103,12 @@ class AmplifyCognitoGateway implements CognitoGateway {
     if (_configured) return;
     if (!Amplify.isConfigured) {
       await Amplify.addPlugin(AmplifyAuthCognito());
-      await Amplify.configure(amplifyConfigJson);
+      await Amplify.configure(
+        buildAmplifyConfigJson(
+          poolId: _config.cognitoPoolId,
+          clientId: _config.cognitoClientId,
+        ),
+      );
     }
     _configured = true;
   }
@@ -193,8 +202,14 @@ class AmplifyCognitoGateway implements CognitoGateway {
     }
   }
 
-  /// The shared Noana Cognito pool (same identity for Clinical and Wellness).
-  static const String amplifyConfigJson = '''
+  /// Amplify config JSON for the given Cognito pool/client (env-scoped).
+  /// The pool/client must match the backend's COGNITO_CLIENT_ID for the
+  /// target environment — the IdToken `aud` claim is validated server-side.
+  static String buildAmplifyConfigJson({
+    required String poolId,
+    required String clientId,
+  }) {
+    return '''
 {
   "UserAgent": "aws-amplify-cli/2.0",
   "Version": "1.0",
@@ -209,15 +224,15 @@ class AmplifyCognitoGateway implements CognitoGateway {
         "CredentialsProvider": {
           "CognitoIdentity": {
             "Default": {
-              "PoolId": "us-east-1_lgjiHS5hH",
+              "PoolId": "$poolId",
               "Region": "us-east-1"
             }
           }
         },
         "CognitoUserPool": {
           "Default": {
-            "PoolId": "us-east-1_lgjiHS5hH",
-            "AppClientId": "156qt3qr79mu4jsnr5t82hot15",
+            "PoolId": "$poolId",
+            "AppClientId": "$clientId",
             "Region": "us-east-1"
           }
         },
@@ -241,6 +256,7 @@ class AmplifyCognitoGateway implements CognitoGateway {
   }
 }
 ''';
+  }
 }
 
 class AuthService {
@@ -373,8 +389,10 @@ class AuthService {
   /// Best display name from Cognito attributes.
   ///
   /// Only explicitly user-editable name attributes are used — NEVER email
-  /// (the local part would leak into communities). Returns null when the
-  /// user has not set a name, so callers keep the safe "Membro" fallback.
+  /// (the local part would leak into communities). Falls back to the Cognito
+  /// USERNAME only when it is not an email-shaped identifier (pools with
+  /// email usernames are skipped). Returns null only when the user has no
+  /// usable name anywhere, so callers keep the safe "Membro" last resort.
   static String? preferredDisplayName(Map<String, String> attrs,
       {String? username}) {
     for (final key in const ['name', 'nickname']) {
