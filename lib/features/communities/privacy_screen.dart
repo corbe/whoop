@@ -11,10 +11,20 @@ import '../../services/score_providers.dart';
 import '../../shared/models/score.dart';
 
 class PrivacyScreen extends ConsumerStatefulWidget {
-  const PrivacyScreen({super.key, required this.communityUuid, required this.communityName});
+  const PrivacyScreen({
+    super.key,
+    required this.communityUuid,
+    required this.communityName,
+    required this.initialScope,
+  });
 
   final String communityUuid;
   final String communityName;
+
+  /// Initial share scope — passed by the caller (route arguments are NOT
+  /// read here: ModalRoute.of(context) inside initState() violates the
+  /// inherited-widget lifecycle).
+  final CommunityShareScope initialScope;
 
   @override
   ConsumerState<PrivacyScreen> createState() => _PrivacyScreenState();
@@ -28,10 +38,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
   @override
   void initState() {
     super.initState();
-    _scope = CommunityShareScope.fromJson(
-      ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ??
-          const {},
-    );
+    _scope = widget.initialScope;
     _loaded = true;
   }
 
