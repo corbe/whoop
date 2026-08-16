@@ -24,16 +24,15 @@ class MemberProfileScreen extends ConsumerWidget {
   ({String communityUuid, String personUuid}) get _params =>
       (communityUuid: communityUuid, personUuid: personUuid);
 
-  static String roleLabel(String? role) {
+  /// Rótulo de papel — membro comum NÃO tem rótulo (redundante).
+  static String? memberRoleLabel(String? role) {
     switch (role) {
       case 'owner':
         return 'Dono';
       case 'admin':
-        return 'Admin';
-      case 'member':
-        return 'Membro';
+        return 'Administrador';
       default:
-        return 'Membro';
+        return null;
     }
   }
 
@@ -110,13 +109,14 @@ class MemberProfileScreen extends ConsumerWidget {
             style: theme.textTheme.titleLarge,
           ),
         ),
-        Center(
-          child: Text(
-            roleLabel(profile.role),
-            style: theme.textTheme.labelLarge
-                ?.copyWith(color: theme.colorScheme.primary),
+        if (MemberProfileScreen.memberRoleLabel(profile.role) != null)
+          Center(
+            child: Text(
+              MemberProfileScreen.memberRoleLabel(profile.role)!,
+              style: theme.textTheme.labelLarge
+                  ?.copyWith(color: theme.colorScheme.primary),
+            ),
           ),
-        ),
         const Divider(height: 32),
 
         // ── rank comunitário ──

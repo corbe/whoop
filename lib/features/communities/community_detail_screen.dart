@@ -78,32 +78,50 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
         title: const Text('Comunidade'),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: const [
-            Tab(text: 'Visão geral'),
-            Tab(text: 'Leaderboard'),
+            Tab(text: 'Chat'),
+            Tab(text: 'Ranking'),
             Tab(text: 'Desafios'),
             Tab(text: 'Membros'),
-            Tab(text: 'Chat'),
+            Tab(text: 'Visão geral'),
           ],
         ),
       ),
       body: communityAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        loading: () =>
+            const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         error: (e, _) => Center(child: Text('Falha: $e')),
-        data: (community) => TabBarView(
-          controller: _tabController,
-          children: [
-            _OverviewTab(community: community, onOpenPrivacy: () => _openPrivacy(community)),
-            LeaderboardTab(communityUuid: widget.uuid),
-            ChallengesTab(
-              communityUuid: widget.uuid,
-              communityName: community.name,
-              isOwnerOrAdmin: _isOwnerOrAdmin(community),
-            ),
-            _MembersTab(uuid: widget.uuid, community: community),
-            _ChatTab(community: community),
-          ],
-        ),
+        data: (community) {
+          // Não-membros caem na Visão geral (join/privacidade) ao entrar;
+          // membros ativos ficam no Chat (destino primário). Só pulamos UMA
+          // vez e apenas se o usuário ainda não navegou manualmente.
+          if (!community.isActiveMember && _tabController.index == 0) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _tabController.index == 0) {
+                _tabController.animateTo(4);
+              }
+            });
+          }
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _ChatTab(community: community),
+              LeaderboardTab(communityUuid: widget.uuid),
+              ChallengesTab(
+                communityUuid: widget.uuid,
+                communityName: community.name,
+                isOwnerOrAdmin: _isOwnerOrAdmin(community),
+              ),
+              _MembersTab(uuid: widget.uuid, community: community),
+              _OverviewTab(
+                community: community,
+                onOpenPrivacy: () => _openPrivacy(community),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -347,7 +365,12 @@ class _MembersTab extends ConsumerWidget {
                       : Text(identity.initial),
                 ),
                 title: Text(identity.safeDisplayName),
-                subtitle: Text('${member.role} • ${member.status}'),
+                subtitle: MemberProfileScreen.memberRoleLabel(member.role) ==
+                        null
+                    ? null
+                    : Text(
+                        MemberProfileScreen.memberRoleLabel(member.role)!,
+                      ),
                 trailing: community.isOwner && member.personUuid != community.ownerPersonUuid
                     ? _memberActions(context, ref, member)
                     : null,

@@ -91,7 +91,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Maria'), findsOneWidget);
-      expect(find.text('Membro'), findsOneWidget); // role label
+      // Papel de membro comum NÃO é exibido (redundante).
+      expect(find.text('Membro'), findsNothing);
       expect(find.text('#4'), findsOneWidget);
       expect(find.text('de 28'), findsOneWidget);
       expect(find.text('12 dias'), findsOneWidget);
@@ -107,6 +108,24 @@ void main() {
       await tester.scrollUntilVisible(find.textContaining('Membro desde'), 200,
           scrollable: find.byType(Scrollable).first);
       expect(find.textContaining('Membro desde'), findsOneWidget);
+    });
+
+    testWidgets('privileged roles show the role label', (tester) async {
+      final admin = MemberSocialProfile.fromJson(
+        Map<String, dynamic>.from(_profileJson)..['role'] = 'admin',
+      );
+      await tester.pumpWidget(_screen(admin));
+      await tester.pumpAndSettle();
+      expect(find.text('Administrador'), findsOneWidget);
+    });
+
+    testWidgets('owner role shows "Dono"', (tester) async {
+      final owner = MemberSocialProfile.fromJson(
+        Map<String, dynamic>.from(_profileJson)..['role'] = 'owner',
+      );
+      await tester.pumpWidget(_screen(owner));
+      await tester.pumpAndSettle();
+      expect(find.text('Dono'), findsOneWidget);
     });
 
     testWidgets('empty sections show honest empty states', (tester) async {
