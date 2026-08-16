@@ -72,12 +72,17 @@ class FakeCognitoGateway implements CognitoGateway {
   @override
   Future<AuthUser?> currentUser() async {
     if (!_hasSession) return null;
-    return const AuthUser(
+    return AuthUser(
       userId: '11111111-2222-3333-4444-555555555555',
-      username: 'user@noana.com',
-      signInDetails: CognitoSignInDetails.apiBased(username: 'user@noana.com'),
+      username: usernameOverride,
+      signInDetails:
+          CognitoSignInDetails.apiBased(username: usernameOverride),
     );
   }
+
+  /// Username do usuário autenticado (default email-shaped, como o pool
+  /// clínico). Testes de fallback de display name usam um valor não-email.
+  String usernameOverride = 'user@noana.com';
 
   @override
   Future<AuthTokens> refreshSession() async {

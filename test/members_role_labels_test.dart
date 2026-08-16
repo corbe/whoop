@@ -79,6 +79,27 @@ Widget _app() {
   );
 }
 
+class _Host extends StatelessWidget {
+  const _Host();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: TextButton(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const CommunityDetailScreen(uuid: _communityUuid),
+            ),
+          ),
+          child: const Text('Host inicial'),
+        ),
+      ),
+    );
+  }
+}
+
 void main() {
   testWidgets('normal member has NO role label; privileged roles shown',
       (tester) async {
@@ -109,5 +130,47 @@ void main() {
     expect(find.textContaining('person-'), findsNothing);
     expect(find.textContaining('wellness:'), findsNothing);
     expect(find.textContaining('11111111'), findsNothing);
+  });
+
+  testWidgets('Community AppBar has a back button that pops to the previous '
+      'screen', (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        communityDetailProvider.overrideWith((ref, uuid) async => _community()),
+        communityMembersProvider.overrideWith((ref, uuid) async => _members()),
+        communityNotificationPreferenceProvider
+            .overrideWith((ref, uuid) async => 'default'),
+        currentWellnessPersonProvider.overrideWith(() => _FakePersonNotifier()),
+        reactionCatalogProvider.overrideWith(
+          (ref) async => const ReactionCatalog(
+            reactions: [],
+            quick: ['❤️', '👍'],
+          ),
+        ),
+      ],
+      child: const MaterialApp(home: _Host()),
+    ));
+    await tester.pumpAndSettle();
+
+    // Entra na comunidade via Navigator stack (como o app faz).
+    await tester.tap(find.text('Host inicial'));
+    await tester.pumpAndSettle();
+
+    // AppBar: seta de volta + título com o NOME da comunidade.
+    expect(find.byType(BackButton), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text('Comunidade Teste'),
+      ),
+      findsOneWidget,
+      reason: 'o título da AppBar deve ser o nome da comunidade',
+    );
+
+    // Voltar → retorna ao host (a lista anterior), não reconstrói nada.
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Host inicial'), findsOneWidget);
+    expect(find.byType(CommunityDetailScreen), findsNothing);
   });
 }

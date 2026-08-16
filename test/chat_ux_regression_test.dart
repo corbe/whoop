@@ -13,6 +13,7 @@ import 'dart:async';
 
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart'
     show EmojiPicker;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -332,6 +333,41 @@ void main() {
     await tester.pumpAndSettle();
     // Barra de reações rápidas do catálogo.
     expect(find.text('❤️'), findsWidgets);
+  });
+
+  testWidgets('visible "..." button opens the SAME action menu',
+      (tester) async {
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Ações').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Responder'), findsOneWidget);
+    expect(find.text('Reagir'), findsOneWidget);
+    expect(find.text('Copiar'), findsOneWidget);
+  });
+
+  testWidgets('right-click (secondary tap, mouse) opens the SAME action menu',
+      (tester) async {
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+
+    final target = find.text('Bora treinar hoje?');
+    final center = tester.getCenter(target);
+    final gesture = await tester.createGesture(
+      kind: PointerDeviceKind.mouse,
+      buttons: kSecondaryMouseButton,
+    );
+    await gesture.addPointer(location: center);
+    await gesture.down(center);
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Responder'), findsOneWidget);
+    expect(find.text('Reagir'), findsOneWidget);
+    expect(find.text('Copiar'), findsOneWidget);
   });
 
   testWidgets('emoji composer button opens the picker (insert, not reaction)',

@@ -73,9 +73,13 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
   @override
   Widget build(BuildContext context) {
     final communityAsync = ref.watch(communityDetailProvider(widget.uuid));
+    final community = communityAsync.valueOrNull;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Comunidade'),
+        // Retorno explícito e óbvio para a lista de comunidades (Navigator
+        // stack — preserva o estado das abas; nunca reconstrói a lista).
+        leading: BackButton(onPressed: () => Navigator.maybePop(context)),
+        title: Text(community?.name ?? 'Comunidade'),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -143,6 +147,19 @@ class _OverviewTab extends ConsumerWidget {
     final isMember = community.isActiveMember;
     final isOwner = community.isOwner;
 
+    // Identidade do owner para "Criado por <nome>" — só quando o nome é
+    // REALMENTE conhecido (nunca 'Membro' como fallback) e o owner não é o
+    // próprio usuário (que já vê "Você é o owner").
+    String? ownerIdentityName;
+    if ((community.ownerPersonUuid ?? '').isNotEmpty && !isOwner) {
+      final identities = ref.watch(socialIdentityProvider(community.uuid));
+      final ownerIdentity = identities.resolve(community.ownerPersonUuid!);
+      if (ownerIdentity != null &&
+          ownerIdentity.displayName.trim().isNotEmpty) {
+        ownerIdentityName = ownerIdentity.displayName;
+      }
+    }
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -183,6 +200,16 @@ class _OverviewTab extends ConsumerWidget {
               textAlign: TextAlign.center,
               style: theme.textTheme.labelMedium
                   ?.copyWith(color: theme.colorScheme.primary),
+            ),
+          ),
+        if (ownerIdentityName != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Criado por $ownerIdentityName',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ),
         const Divider(height: 32),

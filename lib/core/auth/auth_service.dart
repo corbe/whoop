@@ -359,6 +359,13 @@ class AuthService {
     return _identity!;
   }
 
+  /// Cognito username of the signed-in user (e.g. 'daniel') — used as a
+  /// last-resort display name only when no name/nickname attribute exists.
+  Future<String?> currentUsername() async {
+    if (_identity == null) await _loadIdentity();
+    return _identity?.username;
+  }
+
   /// Cognito user attributes (empty map when unavailable).
   Future<Map<String, String>> fetchUserAttributes() =>
       _gateway.fetchUserAttributes();
@@ -368,10 +375,15 @@ class AuthService {
   /// Only explicitly user-editable name attributes are used — NEVER email
   /// (the local part would leak into communities). Returns null when the
   /// user has not set a name, so callers keep the safe "Membro" fallback.
-  static String? preferredDisplayName(Map<String, String> attrs) {
+  static String? preferredDisplayName(Map<String, String> attrs,
+      {String? username}) {
     for (final key in const ['name', 'nickname']) {
       final value = attrs[key]?.trim();
       if (value != null && value.isNotEmpty) return value;
+    }
+    final user = username?.trim();
+    if (user != null && user.isNotEmpty && !user.contains('@')) {
+      return user;
     }
     return null;
   }

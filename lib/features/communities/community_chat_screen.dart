@@ -414,21 +414,32 @@ class _MessageBubble extends StatelessWidget {
       onPointerUp: (_) => onScrollAway(),
       child: GestureDetector(
         onLongPress: () => _showActions(context),
+        // Mouse/emulator: botão secundário (clique direito) abre o MESMO
+        // menu de ações — um único caminho para toque e mouse.
+        onSecondaryTapDown: (_) => _showActions(context),
         child: Align(
           alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            constraints: const BoxConstraints(maxWidth: 300),
-            decoration: BoxDecoration(
-              color: isMine
-                  ? theme.colorScheme.primaryContainer
-                  : theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment:
+                isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              if (isMine) _actionsButton(context, mine: true),
+              Flexible(
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  constraints: const BoxConstraints(maxWidth: 300),
+                  decoration: BoxDecoration(
+                    color: isMine
+                        ? theme.colorScheme.primaryContainer
+                        : theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                 if (!isMine)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 2),
@@ -494,7 +505,30 @@ class _MessageBubble extends StatelessWidget {
               ],
             ),
           ),
+              ),
+              if (!isMine) _actionsButton(context, mine: false),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  /// Botão ⋮ visível (touch E mouse) — abre o MESMO menu de ações do
+  /// long-press / clique direito. Uma única implementação.
+  Widget _actionsButton(BuildContext context, {required bool mine}) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: mine ? 4 : 0,
+        right: mine ? 0 : 4,
+        bottom: 8,
+      ),
+      child: IconButton(
+        icon: const Icon(Icons.more_horiz),
+        iconSize: 18,
+        visualDensity: VisualDensity.compact,
+        tooltip: 'Ações',
+        onPressed: () => _showActions(context),
       ),
     );
   }

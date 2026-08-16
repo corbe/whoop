@@ -71,7 +71,8 @@ class CurrentWellnessPersonNotifier extends AsyncNotifier<WellnessPerson?> {
     try {
       final auth = ref.read(authServiceProvider);
       final attrs = await auth.fetchUserAttributes();
-      final name = AuthService.preferredDisplayName(attrs);
+      final username = await auth.currentUsername();
+      final name = AuthService.preferredDisplayName(attrs, username: username);
       if (name == null) return person;
       final api = ref.read(wellnessApiServiceProvider);
       final updated = await api.updateMe(displayName: name);

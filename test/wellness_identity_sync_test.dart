@@ -56,10 +56,42 @@ void main() {
       );
       expect(AuthService.preferredDisplayName(const {}), isNull);
     });
+
+    test('falls back to the Cognito username when no name attribute exists',
+        () {
+      expect(
+        AuthService.preferredDisplayName(
+          const {'email': 'maria@noana.com'},
+          username: 'maria',
+        ),
+        'maria',
+      );
+    });
+
+    test('name still wins over the username', () {
+      expect(
+        AuthService.preferredDisplayName(
+          const {'name': 'Maria Silva'},
+          username: 'maria',
+        ),
+        'Maria Silva',
+      );
+    });
+
+    test('skips an email-shaped username (pool with email usernames)', () {
+      expect(
+        AuthService.preferredDisplayName(
+          const {},
+          username: 'maria@noana.com',
+        ),
+        isNull,
+      );
+    });
   });
 
   group('CurrentWellnessPersonNotifier display-name sync', () {
     const personUuid = '11111111-2222-3333-4444-555555555555';
+    const gatewayDefaultUsername = 'user@noana.com';
     Map<String, dynamic> personJson({String displayName = ''}) => {
           'uuid': personUuid,
           'cognito_sub': 'sub-1',
@@ -76,8 +108,11 @@ void main() {
     Future<ProviderContainer> containerWith({
       required Map<String, String> cognitoAttrs,
       required _FakeWellnessApi api,
+      String? usernameOverride,
     }) async {
-      final gateway = FakeCognitoGateway()..userAttributes = cognitoAttrs;
+      final gateway = FakeCognitoGateway()
+        ..userAttributes = cognitoAttrs
+        ..usernameOverride = usernameOverride ?? gatewayDefaultUsername;
       final auth = AuthService(gateway: gateway, storage: FakeSecureStorage());
       // Authenticate the real service so its synchronous status is
       // `authenticated` (mirrors the app flow; the auth stream is left real).
@@ -129,6 +164,42 @@ void main() {
       expect(api.updateMeCallCount, 0);
     });
 
+    test('seeds display_name from the Cognito USERNAME when no name '
+        'attribute exists (owner "daniel" case)', () async {
+      final api = _FakeWellnessApi(
+        bootstrapPerson: personJson(),
+        updatePerson: personJson(displayName: 'daniel'),
+      );
+      final container = await containerWith(
+        cognitoAttrs: const {'email': 'daniel.latorre@noana.com.br'},
+        usernameOverride: 'daniel',
+        api: api,
+      );
+      addTearDown(container.dispose);
+
+      final person = await container.read(currentWellnessPersonProvider.future);
+      expect(person!.displayName, 'daniel',
+          reason: 'username fallback deve popular o display_name do owner');
+      expect(api.updateMeCallCount, 1);
+      expect(api.lastUpdateMeDisplayName, 'daniel');
+    });
+
+    test('does NOT PATCH when the username is email-shaped (email pool)',
+        () async {
+      final api = _FakeWellnessApi(bootstrapPerson: personJson());
+      final container = await containerWith(
+        cognitoAttrs: const {'email': 'maria@noana.com'},
+        usernameOverride: 'maria@noana.com',
+        api: api,
+      );
+      addTearDown(container.dispose);
+
+      final person = await container.read(currentWellnessPersonProvider.future);
+      expect(person!.displayName, isEmpty,
+          reason: 'email-shaped username nunca vira display name');
+      expect(api.updateMeCallCount, 0);
+    });
+
     test('does not PATCH when Cognito has no usable name attribute',
         () async {
       final api = _FakeWellnessApi(bootstrapPerson: personJson());
@@ -169,6 +240,7 @@ class _FakeWellnessApi implements WellnessApiService {
   final Map<String, dynamic>? updatePerson;
   int updateMeCallCount = 0;
   bool failUpdateMe = false;
+  String? lastUpdateMeDisplayName;
 
   WellnessBootstrapResponse get _bootstrapResp => WellnessBootstrapResponse.fromJson({
         'person': bootstrapPerson,
@@ -207,6 +279,7 @@ class _FakeWellnessApi implements WellnessApiService {
     String? formulaClientVersion,
   }) async {
     updateMeCallCount++;
+    lastUpdateMeDisplayName = displayName;
     if (failUpdateMe) {
       throw Exception('PATCH failed');
     }
