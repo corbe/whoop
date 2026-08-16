@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/challenge_providers.dart';
 import '../../shared/models/challenge.dart';
 import 'challenge_detail_screen.dart';
+import 'challenge_status_ui.dart';
 import 'create_challenge_screen.dart';
 
 class ChallengesTab extends ConsumerWidget {
@@ -70,14 +71,14 @@ class ChallengesTab extends ConsumerWidget {
                 ),
               ),
             ),
-            data: (challenges) => _buildList(context, challenges),
+            data: (challenges) => _buildList(context, ref, challenges),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildList(BuildContext context, List<Challenge> challenges) {
+  Widget _buildList(BuildContext context, WidgetRef ref, List<Challenge> challenges) {
     final active = challenges
         .where((c) => c.status == ChallengeStatus.active)
         .toList();
@@ -86,6 +87,9 @@ class ChallengesTab extends ConsumerWidget {
         .toList();
     final completed = challenges
         .where((c) => c.status == ChallengeStatus.completed)
+        .toList();
+    final cancelled = challenges
+        .where((c) => c.status == ChallengeStatus.cancelled)
         .toList();
 
     if (challenges.isEmpty) {
@@ -100,22 +104,54 @@ class ChallengesTab extends ConsumerWidget {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
-        if (active.isNotEmpty) ...[
-          _SectionHeader('Ativos'),
-          ...active.map((c) => _ChallengeCard(communityUuid, c)),
+    return RefreshIndicator(
+      onRefresh: () async =>
+          ref.invalidate(communityChallengesProvider(communityUuid)),
+      child: ListView(
+        padding: const EdgeInsets.all(12),
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          if (active.isNotEmpty) ...[
+            _SectionHeader('Ativos'),
+            ...active.map((c) => _ChallengeCard(communityUuid, c)),
+          ] else ...[
+            _SectionHeader('Ativos'),
+            _EmptySectionHint('Nenhum desafio ativo no momento.'),
+          ],
+          if (upcoming.isNotEmpty) ...[
+            _SectionHeader('Em breve'),
+            ...upcoming.map((c) => _ChallengeCard(communityUuid, c)),
+          ],
+          if (completed.isNotEmpty) ...[
+            _SectionHeader('Concluídos'),
+            ...completed.map((c) => _ChallengeCard(communityUuid, c)),
+          ],
+          if (cancelled.isNotEmpty) ...[
+            _SectionHeader('Cancelados'),
+            ...cancelled.map((c) => _ChallengeCard(communityUuid, c)),
+          ],
         ],
-        if (upcoming.isNotEmpty) ...[
-          _SectionHeader('Em breve'),
-          ...upcoming.map((c) => _ChallengeCard(communityUuid, c)),
-        ],
-        if (completed.isNotEmpty) ...[
-          _SectionHeader('Concluídos'),
-          ...completed.map((c) => _ChallengeCard(communityUuid, c)),
-        ],
-      ],
+      ),
+    );
+  }
+}
+
+class _EmptySectionHint extends StatelessWidget {
+  const _EmptySectionHint(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
     );
   }
 }
@@ -146,53 +182,39 @@ class _ChallengeCard extends StatelessWidget {
   final String communityUuid;
   final Challenge challenge;
 
-  String _metricLabel(String metric) {
-    switch (metric) {
-      case 'readiness':
-        return 'Readiness';
-      case 'sleep':
-        return 'Sleep';
-      case 'activity':
-        return 'Activity';
-      case 'strain':
-        return 'Strain';
-      default:
-        return metric;
-    }
-  }
-
-  String _aggLabel(String aggregation) {
-    switch (aggregation) {
-      case 'average':
-        return 'Média';
-      case 'best':
-        return 'Melhor dia';
-      case 'days_recorded':
-        return 'Dias registrados';
-      default:
-        return aggregation;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final progress = challenge.currentUserProgress;
+    final cancelled = challenge.status == ChallengeStatus.cancelled;
+    final countdown = challengeCountdown(challenge, DateTime.now());
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: const Icon(Icons.emoji_events_outlined),
+        leading: Icon(
+          Icons.emoji_events_outlined,
+          color: cancelled
+              ? theme.colorScheme.onSurfaceVariant
+              : theme.colorScheme.primary,
+        ),
         title: Text(challenge.name,
             maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${challenge.startDate} – ${challenge.endDate}',
-              style: theme.textTheme.bodySmall,
+              '${challenge.startDate} – ${challenge.endDate}'
+              '${countdown.isNotEmpty ? '  ·  $countdown' : ''}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cancelled
+                    ? theme.colorScheme.onSurfaceVariant
+                    : theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             Text(
-              '${_aggLabel(challenge.aggregation)} · ${_metricLabel(challenge.metric)}',
+              '${challengeAggregationLabel(challenge.aggregation)} · '
+              '${challengeMetricLabel(challenge.metric)}',
               style: theme.textTheme.bodySmall,
             ),
             Text(
