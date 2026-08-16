@@ -71,7 +71,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.favorite_rounded, size: 72, color: Color(0xFF4CAF50)),
+                  const Icon(Icons.favorite_rounded, size: 72, color: Color(0xFF713795)),
                   const SizedBox(height: 8),
                   Text(
                     'Noana Wellness',

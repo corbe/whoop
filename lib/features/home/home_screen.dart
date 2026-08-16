@@ -54,7 +54,7 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.self_improvement, size: 64, color: Color(0xFF4CAF50)),
+              const Icon(Icons.self_improvement, size: 64, color: Color(0xFF713795)),
               const SizedBox(height: 12),
               Text('Bem-vindo!', style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 8),
