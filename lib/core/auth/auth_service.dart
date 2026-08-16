@@ -82,6 +82,10 @@ abstract interface class CognitoGateway {
   Future<AuthUser?> currentUser();
 
   Future<AuthTokens> refreshSession();
+
+  /// Cognito user attributes (name, nickname, email, …). Empty map on
+  /// failure — the caller must treat it as "no attributes available".
+  Future<Map<String, String>> fetchUserAttributes();
 }
 
 /// Default gateway backed by the Amplify Cognito plugin.
@@ -175,6 +179,19 @@ class AmplifyCognitoGateway implements CognitoGateway {
 
   @override
   Future<AuthTokens> refreshSession() => fetchTokens();
+
+  @override
+  Future<Map<String, String>> fetchUserAttributes() async {
+    if (!Amplify.isConfigured) return const {};
+    try {
+      final attrs = await Amplify.Auth.fetchUserAttributes();
+      return {for (final a in attrs) a.userAttributeKey.key: a.value};
+    } on AuthException {
+      return const {};
+    } catch (_) {
+      return const {};
+    }
+  }
 
   /// The shared Noana Cognito pool (same identity for Clinical and Wellness).
   static const String amplifyConfigJson = '''
@@ -340,6 +357,23 @@ class AuthService {
     if (existing != null) return existing;
     await _loadIdentity();
     return _identity!;
+  }
+
+  /// Cognito user attributes (empty map when unavailable).
+  Future<Map<String, String>> fetchUserAttributes() =>
+      _gateway.fetchUserAttributes();
+
+  /// Best display name from Cognito attributes.
+  ///
+  /// Only explicitly user-editable name attributes are used — NEVER email
+  /// (the local part would leak into communities). Returns null when the
+  /// user has not set a name, so callers keep the safe "Membro" fallback.
+  static String? preferredDisplayName(Map<String, String> attrs) {
+    for (final key in const ['name', 'nickname']) {
+      final value = attrs[key]?.trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
   }
 
   Future<void> _persistTokens() async {

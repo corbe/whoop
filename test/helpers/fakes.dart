@@ -95,6 +95,12 @@ class FakeCognitoGateway implements CognitoGateway {
       refreshToken: 'refresh-token-1',
     );
   }
+
+  /// Cognito attributes returned by [fetchUserAttributes] (empty by default).
+  Map<String, String> userAttributes = const {};
+
+  @override
+  Future<Map<String, String>> fetchUserAttributes() async => userAttributes;
 }
 
 class FakeAuthUser extends AuthUser {

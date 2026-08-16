@@ -37,17 +37,47 @@ class CurrentWellnessPersonNotifier extends AsyncNotifier<WellnessPerson?> {
   @override
   Future<WellnessPerson?> build() async {
     // Only meaningful when authenticated; resolves person lazily.
-    final authStatus = ref.watch(authStatusProvider).valueOrNull;
-    if (authStatus != AuthStatus.authenticated) return null;
+    // Gate on the service's SYNCHRONOUS status (not a watch on the auth
+    // stream: in Riverpod 2.6 a watch on a StreamProvider inside an
+    // AsyncNotifier keeps the build future pending until first emission).
+    // Rebuild on auth transitions via listen (invalidateSelf is async-safe).
+    final auth = ref.read(authServiceProvider);
+    ref.listen(authStatusProvider, (prev, next) {
+      if (prev?.valueOrNull != next.valueOrNull) {
+        ref.invalidateSelf();
+      }
+    });
+    if (auth.status != AuthStatus.authenticated) return null;
     try {
       final bootstrap = ref.watch(bootstrapWellnessProvider);
       final result = await bootstrap();
-      return result.person;
+      return await _syncDisplayNameIfMissing(result.person);
     } catch (_) {
       // Offline or backend unavailable: fall back to stored uuid if present.
       final stored = await ref.read(secureStorageProvider).getWellnessPersonUuid();
       if (stored == null) rethrow;
       return WellnessPerson(uuid: stored, cognitoSub: '');
+    }
+  }
+
+  /// Best-effort: when the backend has no display name yet, seed it from the
+  /// user's own Cognito attributes (name/nickname — never email).
+  ///
+  /// Fixes the root cause of "Membro" everywhere: backend members/chat
+  /// resolve display_name from WellnessPerson, which was never populated.
+  /// Purely additive and idempotent — a failed sync never breaks bootstrap.
+  Future<WellnessPerson> _syncDisplayNameIfMissing(WellnessPerson person) async {
+    if (person.displayName.trim().isNotEmpty) return person;
+    try {
+      final auth = ref.read(authServiceProvider);
+      final attrs = await auth.fetchUserAttributes();
+      final name = AuthService.preferredDisplayName(attrs);
+      if (name == null) return person;
+      final api = ref.read(wellnessApiServiceProvider);
+      final updated = await api.updateMe(displayName: name);
+      return updated.person;
+    } catch (_) {
+      return person;
     }
   }
 
