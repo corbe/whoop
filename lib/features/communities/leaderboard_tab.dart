@@ -34,6 +34,7 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final myPerson = ref.watch(currentWellnessPersonProvider).valueOrNull;
     final myUuid = myPerson?.uuid;
     final rankingAsync = ref.watch(communityRankingProvider((
@@ -42,21 +43,64 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
       period: _period,
       date: null,
     )));
+    final ranking = rankingAsync.valueOrNull;
+    final metricLabel =
+        _metrics.firstWhere((m) => m.$1 == _metric, orElse: () => _metrics[0]).$2;
+
+    // Valor real do METRIC BLOCK: score do próprio usuário quando disponível,
+    // senão o primeiro entry — dados reais, nunca fabricados.
+    String? metricValue;
+    if (ranking != null && ranking.entries.isNotEmpty) {
+      if (myUuid != null) {
+        for (final e in ranking.entries) {
+          if (e.personUuid == myUuid) {
+            metricValue = e.score.toStringAsFixed(1);
+            break;
+          }
+        }
+      }
+      metricValue ??= ranking.entries.first.score.toStringAsFixed(1);
+    }
 
     return Column(
       children: [
+        // ── METRIC BLOCK: a métrica é o assunto da tela ──
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+          child: Column(
             children: [
-              DropdownButton<String>(
-                value: _metric,
-                items: _metrics
-                    .map((m) => DropdownMenuItem(value: m.$1, child: Text(m.$2)))
-                    .toList(),
-                onChanged: (v) => setState(() => _metric = v ?? 'readiness'),
+              InkWell(
+                onTap: () => _showMetricMenu(context),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        metricLabel.toUpperCase(),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down,
+                          color: Color(0xFF9E9E9E)),
+                    ],
+                  ),
+                ),
               ),
-              const Spacer(),
+              const SizedBox(height: 2),
+              Text(
+                metricValue ?? '–',
+                style: theme.textTheme.displayMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 10),
               RitmaSegmentedControl(
                 options: const [
                   ('day', 'Dia'),
@@ -69,6 +113,7 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
             ],
           ),
         ),
+        const Divider(height: 24),
         Expanded(
           child: rankingAsync.when(
             loading: () =>
@@ -82,8 +127,8 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
                     Text(
                       'Falha ao carregar ranking: $e',
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyle(color: Theme.of(context).colorScheme.error),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.error),
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton(
@@ -100,6 +145,20 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
         ),
       ],
     );
+  }
+
+  Future<void> _showMetricMenu(BuildContext context) async {
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(120, 120, 120, 120),
+      items: [
+        for (final m in _metrics)
+          PopupMenuItem(value: m.$1, child: Text(m.$2)),
+      ],
+    );
+    if (selected != null && mounted) {
+      setState(() => _metric = selected);
+    }
   }
 
   Widget _buildRanking(BuildContext context, CommunityRanking ranking, String? myUuid) {

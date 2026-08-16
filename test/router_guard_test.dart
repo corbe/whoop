@@ -68,7 +68,7 @@ void main() {
       await auth.login(username: 'user@noana.com', password: 'secret123');
       await tester.pumpAndSettle();
 
-      expect(find.text('Bem-vindo!'), findsOneWidget);
+      expect(find.text('Bom dia,'), findsOneWidget);
       expect(find.text('Entrar'), findsNothing);
     });
 
@@ -81,7 +81,7 @@ void main() {
       await pumpApp(tester, container);
       await auth.login(username: 'user@noana.com', password: 'secret123');
       await tester.pumpAndSettle();
-      expect(find.text('Bem-vindo!'), findsOneWidget);
+      expect(find.text('Bom dia,'), findsOneWidget);
 
       await auth.logout();
       await tester.pumpAndSettle();

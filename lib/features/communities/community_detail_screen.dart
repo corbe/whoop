@@ -81,18 +81,6 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
         // stack — preserva o estado das abas; nunca reconstrói a lista).
         leading: BackButton(onPressed: () => Navigator.maybePop(context)),
         title: Text(community?.name ?? 'Comunidade'),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: const [
-            Tab(text: 'Chat'),
-            Tab(text: 'Ranking'),
-            Tab(text: 'Desafios'),
-            Tab(text: 'Membros'),
-            Tab(text: 'Visão geral'),
-          ],
-        ),
       ),
       body: communityAsync.when(
         loading: () =>
@@ -109,20 +97,97 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
               }
             });
           }
-          return TabBarView(
-            controller: _tabController,
+          return Column(
             children: [
-              _ChatTab(community: community),
-              LeaderboardTab(communityUuid: widget.uuid),
-              ChallengesTab(
-                communityUuid: widget.uuid,
-                communityName: community.name,
-                isOwnerOrAdmin: _isOwnerOrAdmin(community),
+              // ── TEAM HERO (identidade da comunidade) ──
+              Container(
+                width: double.infinity,
+                color: Theme.of(context)
+                    .colorScheme
+                    .primaryContainer
+                    .withValues(alpha: 0.45),
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 34,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primary,
+                      foregroundImage: community.avatarUrl.isNotEmpty
+                          ? NetworkImage(community.avatarUrl)
+                          : null,
+                      child: community.avatarUrl.isEmpty
+                          ? Text(
+                              community.name.isEmpty
+                                  ? '?'
+                                  : community.name[0].toUpperCase(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      community.name,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${community.memberCount} '
+                      '${community.memberCount == 1 ? 'membro' : 'membros'}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
               ),
-              _MembersTab(uuid: widget.uuid, community: community),
-              _OverviewTab(
-                community: community,
-                onOpenPrivacy: () => _openPrivacy(community),
+              TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: const [
+                  Tab(text: 'Chat'),
+                  Tab(text: 'Ranking'),
+                  Tab(text: 'Desafios'),
+                  Tab(text: 'Membros'),
+                  Tab(text: 'Visão geral'),
+                ],
+              ),
+              Expanded(
+                child: RitmaContentShell(
+                  maxWidth: 720,
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _ChatTab(community: community),
+                      LeaderboardTab(communityUuid: widget.uuid),
+                      ChallengesTab(
+                        communityUuid: widget.uuid,
+                        communityName: community.name,
+                        isOwnerOrAdmin: _isOwnerOrAdmin(community),
+                      ),
+                      _MembersTab(uuid: widget.uuid, community: community),
+                      _OverviewTab(
+                        community: community,
+                        onOpenPrivacy: () => _openPrivacy(community),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           );

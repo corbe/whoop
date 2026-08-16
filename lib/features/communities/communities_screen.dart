@@ -48,27 +48,31 @@ class _CommunitiesScreenState extends ConsumerState<CommunitiesScreen>
           ],
         ),
       ),
+      body: RitmaContentShell(
+        maxWidth: 720,
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _CommunityList(
+              provider: myCommunitiesProvider,
+              empty: 'Você ainda não participa de comunidades.',
+            ),
+            _DiscoverList(),
+          ],
+        ),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/communities/create'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         icon: const Icon(Icons.group_add),
-        label: const Text('Criar'),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _CommunityList(
-            provider: myCommunitiesProvider,
-            empty: 'Você ainda não participa de comunidades.',
-          ),
-          _DiscoverList(),
-        ],
+        label: const Text('Criar comunidade'),
       ),
     );
   }
 }
 
 /// Aba Descobrir: busca local case-insensitive em name/description.
-///
 /// O backend devolve a lista completa/bounded de public_code não-entradas —
 /// filtro local é aceitável (sem N+1, sem backend search desnecessário).
 /// Pull-to-refresh recarrega a fonte e REAPLICA a query (não limpa a busca).

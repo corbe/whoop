@@ -8,6 +8,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/ui/noana_widgets.dart';
+
 import '../../services/gamification_providers.dart';
 import '../../shared/models/gamification.dart';
 
@@ -61,11 +63,18 @@ class _GamificationScreenState extends ConsumerState<GamificationScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const _SummaryHeader(),
-            const Divider(height: 24),
-            Text('Conquistas', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            const _AchievementsList(),
+            const RitmaContentShell(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SummaryHeader(),
+                  Divider(height: 24),
+                  Text('CONQUISTAS', style: TextStyle(fontSize: 16)),
+                  SizedBox(height: 8),
+                  _AchievementsList(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -78,6 +87,7 @@ class _SummaryHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final summaryAsync = ref.watch(gamificationSummaryProvider);
     return summaryAsync.when(
       loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -88,60 +98,83 @@ class _SummaryHeader extends ConsumerWidget {
         ),
       ),
       data: (summary) {
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // DATA >> CONTAINER: métricas dominam, sem card gigante vazio.
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Nível + pontos
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'NÍVEL ${summary.level}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  Text(
+                    '${summary.points} PTS',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Streak: o ZERO é a métrica
+              Center(
+                child: Column(
                   children: [
-                    Text('Nível ${summary.level}',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    Text('${summary.points} pontos',
-                        style: Theme.of(context).textTheme.titleMedium),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(Icons.local_fire_department,
-                        color: Colors.deepOrange),
-                    const SizedBox(width: 6),
                     Text(
-                      '${summary.currentStreak} ${summary.currentStreak == 1 ? 'dia' : 'dias'} consecutivos',
-                      style: Theme.of(context).textTheme.bodyLarge,
+                      '${summary.currentStreak}',
+                      style: theme.textTheme.displayLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      'DIAS CONSECUTIVOS',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Melhor: ${summary.bestStreak} dias',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
-                Text(
-                  'Melhor: ${summary.bestStreak} dias',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Dias consecutivos com um wellness score registrado',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: Theme.of(context).colorScheme.secondary),
-                ),
-                const SizedBox(height: 12),
-                LinearProgressIndicator(
+              ),
+              const SizedBox(height: 20),
+              // Progresso das conquistas: trilha neutra + barra verde real
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
                   value: summary.totalCount == 0
                       ? 0
                       : summary.unlockedCount / summary.totalCount,
-                  minHeight: 6,
-                  borderRadius: BorderRadius.circular(3),
+                  minHeight: 8,
+                  backgroundColor:
+                      theme.colorScheme.primary.withValues(alpha: 0.12),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${summary.unlockedCount} / ${summary.totalCount} conquistas',
-                  style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${summary.unlockedCount} / ${summary.totalCount} conquistas',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -202,17 +235,24 @@ class _AchievementsList extends ConsumerWidget {
             );
           });
         }
-        return GridView.count(
-          crossAxisCount: 3,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          padding: const EdgeInsets.all(16),
-          childAspectRatio: 0.95,
-          children: achievements
-              .map((a) => _AchievementTile(achievement: a))
-              .toList(),
+        // Grade de conquistas: tiles de dimensão INTENCIONAL (nunca esticam
+        // para preencher a viewport) — max 480px de coluna => tile ~160px.
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              padding: const EdgeInsets.all(16),
+              childAspectRatio: 0.85,
+              children: achievements
+                  .map((a) => _AchievementTile(achievement: a))
+                  .toList(),
+            ),
+          ),
         );
       },
     );
@@ -237,7 +277,7 @@ class _AchievementTile extends StatelessWidget {
             : theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
       ),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       child: Opacity(
         opacity: unlocked ? 1 : 0.5,
         child: Column(
@@ -246,12 +286,12 @@ class _AchievementTile extends StatelessWidget {
             Stack(
               children: [
                 CircleAvatar(
-                  radius: 18,
+                  radius: 22,
                   backgroundColor: unlocked
                       ? theme.colorScheme.primary
                       : theme.colorScheme.surfaceContainerHighest,
                   child: Icon(icon,
-                      size: 20,
+                      size: 24,
                       color: unlocked
                           ? Colors.white
                           : theme.colorScheme.onSurfaceVariant),

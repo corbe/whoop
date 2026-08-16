@@ -24,6 +24,34 @@ abstract final class NoanaRadius {
   static const double large = 16;
 }
 
+/// Responsive content shell — RITMA systemic fix for wide viewports.
+///
+/// PHONE: full width + 16px horizontal padding.
+/// WIDE (>= 600): centered column constrained to [maxWidth] (default 640),
+/// padding preserved. Prevents phone-oriented UI from stretching across
+/// tablet/desktop canvases.
+class RitmaContentShell extends StatelessWidget {
+  const RitmaContentShell({
+    super.key,
+    required this.child,
+    this.maxWidth = 640,
+  });
+
+  final Widget child;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: child,
+      ),
+    );
+  }
+}
+
 /// Compact WHOOP-style segmented control (period/metric selectors).
 /// White surface, thin border, green selected state — NOT a Material
 /// SegmentedButton.
@@ -233,28 +261,34 @@ class NoanaRankRow extends StatelessWidget {
     final m = medal(position);
     return ListTile(
       dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 30,
+            width: 34,
             child: Text(
               m.isNotEmpty ? m : (position <= 0 ? '–' : '#$position'),
               textAlign: TextAlign.center,
               style: m.isNotEmpty
-                  ? const TextStyle(fontSize: 18)
-                  : theme.textTheme.labelMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ? const TextStyle(fontSize: 20)
+                  : theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
             ),
           ),
           const SizedBox(width: 8),
           CircleAvatar(
-            radius: 16,
-            backgroundColor: theme.colorScheme.secondaryContainer,
+            radius: 20,
+            backgroundColor: theme.colorScheme.primaryContainer,
             foregroundImage:
                 avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
             child: avatarUrl.isEmpty
-                ? Text(name.isEmpty ? '?' : name[0].toUpperCase())
+                ? Text(
+                    name.isEmpty ? '?' : name[0].toUpperCase(),
+                    style: theme.textTheme.titleMedium,
+                  )
                 : null,
           ),
         ],
@@ -263,8 +297,8 @@ class NoanaRankRow extends StatelessWidget {
         name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: highlight ? FontWeight.w700 : FontWeight.w600,
         ),
       ),
       subtitle: subtitle == null
@@ -278,8 +312,8 @@ class NoanaRankRow extends StatelessWidget {
             ),
       trailing: Text(
         value,
-        style: theme.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
+        style: theme.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w700,
           color: highlight ? theme.colorScheme.primary : null,
         ),
       ),
@@ -320,66 +354,74 @@ class NoanaCommunityRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(NoanaRadius.medium),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: theme.colorScheme.secondaryContainer,
-              foregroundImage: avatarUrl.isNotEmpty
-                  ? NetworkImage(avatarUrl)
-                  : null,
-              child: avatarUrl.isEmpty
-                  ? Text(name.isEmpty ? '?' : name[0].toUpperCase())
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyLarge
-                        ?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    [
-                      members,
-                      if (subtitle != null && subtitle!.isNotEmpty)
-                        subtitle!,
-                    ].join(' • '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                  if (extra != null && extra!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+      child: SizedBox(
+        // ~64–76 logical px row: comfortable, identity-driven, still flat.
+        height: 72,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: theme.colorScheme.primaryContainer,
+                foregroundImage: avatarUrl.isNotEmpty
+                    ? NetworkImage(avatarUrl)
+                    : null,
+                child: avatarUrl.isEmpty
+                    ? Text(
+                        name.isEmpty ? '?' : name[0].toUpperCase(),
+                        style: theme.textTheme.titleLarge,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      extra!,
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      [
+                        members,
+                        if (subtitle != null && subtitle!.isNotEmpty)
+                          subtitle!,
+                      ].join(' • '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.primary),
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
+                    if (extra != null && extra!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        extra!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.colorScheme.primary),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            if (trailing != null)
-              trailing!
-            else
-              Icon(
-                Icons.chevron_right,
-                color: theme.colorScheme.outline,
-              ),
-          ],
+              const SizedBox(width: 8),
+              if (trailing != null)
+                trailing!
+              else
+                Icon(
+                  Icons.chevron_right,
+                  color: theme.colorScheme.outline,
+                ),
+            ],
+          ),
         ),
       ),
     );

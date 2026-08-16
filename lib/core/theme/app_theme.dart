@@ -106,10 +106,10 @@ abstract final class AppTheme {
       tabBarTheme: TabBarThemeData(
         labelColor: scheme.onSurface,
         unselectedLabelColor: scheme.onSurfaceVariant,
-        labelStyle: base.textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w600,
+        labelStyle: base.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w700,
         ),
-        unselectedLabelStyle: base.textTheme.labelLarge,
+        unselectedLabelStyle: base.textTheme.titleSmall,
         indicatorColor: scheme.primary,
         indicatorSize: TabBarIndicatorSize.label,
         dividerColor: Colors.transparent,

@@ -484,8 +484,10 @@ class _MessageBubble extends StatelessWidget {
                             child: Text(
                               senderIdentity.safeDisplayName,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelSmall
-                                  ?.copyWith(color: theme.colorScheme.primary),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -502,7 +504,10 @@ class _MessageBubble extends StatelessWidget {
                 else if (message.type == ChatMessageType.file)
                   _FileContent(attachment: message.attachments.first)
                 else
-                  Text(message.text),
+                  Text(
+                    message.text,
+                    style: theme.textTheme.bodyLarge?.copyWith(height: 1.3),
+                  ),
                 if (message.reactions.isNotEmpty)
                   _ReactionRow(
                     reactions: message.reactions,
