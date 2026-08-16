@@ -37,6 +37,6 @@ void main() {
 
     // App title renders; login affordance present.
     expect(find.byType(MaterialApp), findsOneWidget);
-    expect(find.text('Noana Wellness'), findsWidgets);
+    expect(find.text('RITMA'), findsOneWidget);
   });
 }

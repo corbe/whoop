@@ -24,22 +24,22 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Noana Wellness'),
+        title: const Text('RITMA'),
         actions: [
           IconButton(
             icon: const Icon(Icons.groups_outlined),
             tooltip: 'Comunidades',
-            onPressed: () => context.go('/communities'),
+            onPressed: () => context.push('/communities'),
           ),
           IconButton(
             icon: const Icon(Icons.emoji_events_outlined),
             tooltip: 'Progresso',
-            onPressed: () => context.go('/gamification'),
+            onPressed: () => context.push('/gamification'),
           ),
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
             tooltip: 'Chat diagnóstico',
-            onPressed: () => context.go('/chat/diagnostic'),
+            onPressed: () => context.push('/chat/diagnostic'),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -54,7 +54,7 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.self_improvement, size: 64, color: Color(0xFF713795)),
+              const Icon(Icons.self_improvement, size: 64, color: Color(0xFF2E9E6B)),
               const SizedBox(height: 12),
               Text('Bem-vindo!', style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 8),
@@ -134,7 +134,7 @@ class _ProgressCard extends ConsumerWidget {
           ),
           subtitle: const Text('Seu progresso'),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.go('/gamification'),
+          onTap: () => context.push('/gamification'),
         ),
       ),
     );

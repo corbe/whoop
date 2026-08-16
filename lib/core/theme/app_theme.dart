@@ -1,41 +1,65 @@
-/// App theme (spec §60 core/theme).
+/// RITMA app theme — WHOOP structure reinterpreted as a clean light system.
+///
+/// White/near-white surfaces, near-black primary text, gray secondary text,
+/// hairline dividers, RITMA green accent. No purple-primary branding.
+/// Dark mode stays functional via the same green seed (charcoal surfaces).
 library;
 
 import 'package:flutter/material.dart';
 
-/// Noana brand identity (from noana.com.br, verified 2026-08-16):
-/// - primary purple  #713795 — logo wordmark + headers (dominant brand color)
-/// - accent orange   #F47421 — CTA buttons / highlights
-/// - accent blue     #2EA3F2 — informational accents
-/// - lavender tints  #8D7BB8 / #D2CFFC — soft purple surfaces
 abstract final class AppTheme {
-  static const Color brandPurple = Color(0xFF713795);
+  /// RITMA brand identity:
+  /// - brandGreen  #2E9E6B — brand/selected/CTA (authoritative green:
+  ///   no pre-existing green existed in the project; introduced as the
+  ///   RITMA brand accent, harmonized with the Noana blue #2EA3F2).
+  /// - brandOrange #F47421 — legacy secondary CTA (kept as secondary).
+  /// - brandBlue   #2EA3F2 — informational accent.
+  /// - brandPurple #713795 — legacy identity; demoted, no longer primary.
+  static const Color brandGreen = Color(0xFF2E9E6B);
+  static const Color brandGreenSoft = Color(0xFFE4F4EC);
   static const Color brandOrange = Color(0xFFF47421);
   static const Color brandBlue = Color(0xFF2EA3F2);
-  static const Color brandLavender = Color(0xFFD2CFFC);
+  static const Color brandPurple = Color(0xFF713795);
 
   static ColorScheme _scheme(Brightness brightness) {
-    // Purple seed generates the full tonal M3 scheme (surfaces/containers come
-    // out lavender-toned, matching the site's #8D7BB8/#D2CFFC tints), then the
-    // brand orange/blue are pinned explicitly so they survive tone derivation.
+    final light = brightness == Brightness.light;
     final base = ColorScheme.fromSeed(
-      seedColor: brandPurple,
+      seedColor: brandGreen,
       brightness: brightness,
     );
-    final light = brightness == Brightness.light;
     return base.copyWith(
-      secondary: brandOrange,
-      onSecondary: const Color(0xFF331400), // dark text on orange (AA)
+      // Surfaces: white / near-white in light; charcoal in dark.
+      surface: light ? const Color(0xFFFFFFFF) : base.surface,
+      surfaceContainerLowest:
+          light ? const Color(0xFFFFFFFF) : base.surfaceContainerLowest,
+      surfaceContainerLow:
+          light ? const Color(0xFFFAFAFA) : base.surfaceContainerLow,
+      surfaceContainer:
+          light ? const Color(0xFFF5F5F5) : base.surfaceContainer,
+      surfaceContainerHigh:
+          light ? const Color(0xFFF0F0F0) : base.surfaceContainerHigh,
+      // RITMA green primary + soft mint container.
+      primary: light ? brandGreen : base.primary,
+      onPrimary: light ? Colors.white : base.onPrimary,
+      primaryContainer:
+          light ? brandGreenSoft : base.primaryContainer,
+      onPrimaryContainer:
+          light ? const Color(0xFF0B3D27) : base.onPrimaryContainer,
+      // Legacy orange stays secondary (site CTA), blue stays tertiary.
+      secondary: light ? brandOrange : base.secondary,
+      onSecondary: light ? const Color(0xFF331400) : base.onSecondary,
       secondaryContainer:
-          light ? const Color(0xFFFFE1CC) : const Color(0xFF5A2B00),
+          light ? const Color(0xFFFFE1CC) : base.secondaryContainer,
       onSecondaryContainer:
-          light ? const Color(0xFF331400) : const Color(0xFFFFDCC1),
+          light ? const Color(0xFF331400) : base.onSecondaryContainer,
       tertiary: brandBlue,
-      onTertiary: const Color(0xFF00263F),
+      onTertiary: light ? const Color(0xFF00263F) : base.onTertiary,
       tertiaryContainer:
-          light ? const Color(0xFFD3E9FF) : const Color(0xFF003A5C),
+          light ? const Color(0xFFD3E9FF) : base.tertiaryContainer,
       onTertiaryContainer:
-          light ? const Color(0xFF00263F) : const Color(0xFFCFE8FF),
+          light ? const Color(0xFF00263F) : base.onTertiaryContainer,
+      outlineVariant:
+          light ? const Color(0xFFE3E3E3) : base.outlineVariant,
     );
   }
 
@@ -48,35 +72,39 @@ abstract final class AppTheme {
       colorScheme: scheme,
       useMaterial3: true,
     );
+    final hairline = scheme.outlineVariant.withValues(alpha: 0.7);
     return base.copyWith(
+      scaffoldBackgroundColor: scheme.surface,
       appBarTheme: AppBarTheme(
         centerTitle: false,
         backgroundColor: scheme.surface,
-        foregroundColor: scheme.primary, // brand purple title/back arrow
+        foregroundColor: scheme.onSurface,
         elevation: 0,
+        scrolledUnderElevation: 0,
         titleTextStyle: base.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: scheme.onSurface,
         ),
       ),
-      // Brand-colored icons everywhere (site iconography is purple-dominant).
-      iconTheme: IconThemeData(color: scheme.primary),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        color: scheme.surfaceContainerLow,
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      ),
+      iconTheme: IconThemeData(color: scheme.onSurfaceVariant),
+      // Hairline dividers everywhere.
       dividerTheme: DividerThemeData(
-        color: scheme.outlineVariant.withValues(alpha: 0.6),
+        color: hairline,
         thickness: 0.5,
         space: 1,
       ),
-      // Compact WHOOP-like tab bar: thin purple underline, muted unselected.
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: scheme.surface,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: hairline),
+        ),
+      ),
+      // Compact tab strip: thin RITMA-green underline, strong selected text.
       tabBarTheme: TabBarThemeData(
-        labelColor: scheme.primary,
+        labelColor: scheme.onSurface,
         unselectedLabelColor: scheme.onSurfaceVariant,
         labelStyle: base.textTheme.labelLarge?.copyWith(
           fontWeight: FontWeight.w600,
@@ -86,25 +114,63 @@ abstract final class AppTheme {
         indicatorSize: TabBarIndicatorSize.label,
         dividerColor: Colors.transparent,
         overlayColor: WidgetStatePropertyAll(
-          scheme.primary.withValues(alpha: 0.08),
+          scheme.primary.withValues(alpha: 0.06),
         ),
       ),
-      // Primary CTA = brand orange, like the site's buy/assine buttons.
+      // Primary CTA = RITMA green (was orange).
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: scheme.secondary,
-          foregroundColor: scheme.onSecondary,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+          textStyle: base.textTheme.labelLarge
+              ?.copyWith(fontWeight: FontWeight.w600),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
       ),
       listTileTheme: ListTileThemeData(
         dense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        textColor: scheme.onSurface,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surfaceContainerLow,
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: hairline),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: hairline),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: scheme.primary, width: 1.2),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: scheme.primary,
+        linearTrackColor: scheme.primary.withValues(alpha: 0.15),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: scheme.surface,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: scheme.primary.withValues(alpha: 0.12),
+        labelTextStyle: WidgetStatePropertyAll(
+          base.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: scheme.inverseSurface,
+        behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
       ),
     );

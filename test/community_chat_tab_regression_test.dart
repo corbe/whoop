@@ -247,7 +247,7 @@ void main() {
     expect(find.text('Nenhuma mensagem ainda. Envie a primeira!'),
         findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
-    expect(find.byIcon(Icons.send), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
 
     // The chat controller must have started: history was requested.
     expect(setup.fake.historyCalls, greaterThanOrEqualTo(1),

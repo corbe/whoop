@@ -24,6 +24,90 @@ abstract final class NoanaRadius {
   static const double large = 16;
 }
 
+/// Compact WHOOP-style segmented control (period/metric selectors).
+/// White surface, thin border, green selected state — NOT a Material
+/// SegmentedButton.
+class RitmaSegmentedControl extends StatelessWidget {
+  const RitmaSegmentedControl({
+    super.key,
+    required this.options,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final List<(String, String)> options; // (value, label)
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      padding: const EdgeInsets.all(2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final (value, label) in options)
+            InkWell(
+              onTap: () => onChanged(value),
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: value == selected
+                      ? scheme.primary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: value == selected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: value == selected
+                            ? scheme.onPrimary
+                            : scheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Section label — small, uppercase, letter-spaced (WHOOP hierarchy).
+class RitmaSectionLabel extends StatelessWidget {
+  const RitmaSectionLabel(this.title, {super.key, this.padding});
+
+  final String title;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: padding ?? const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      child: Text(
+        title,
+        style: theme.textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.1,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
 /// Section header: compact semibold label with a hairline divider.
 class NoanaSectionHeader extends StatelessWidget {
   const NoanaSectionHeader(this.title, {super.key, this.padding});

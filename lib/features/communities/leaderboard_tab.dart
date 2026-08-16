@@ -12,7 +12,6 @@ import '../../services/wellness_identity_providers.dart';
 import '../../shared/models/score.dart';
 import '../../core/ui/noana_widgets.dart';
 import 'member_profile_screen.dart';
-
 class LeaderboardTab extends ConsumerStatefulWidget {
   const LeaderboardTab({super.key, required this.communityUuid});
 
@@ -58,14 +57,14 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
                 onChanged: (v) => setState(() => _metric = v ?? 'readiness'),
               ),
               const Spacer(),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'day', label: Text('Dia')),
-                  ButtonSegment(value: 'week', label: Text('Semana')),
-                  ButtonSegment(value: 'month', label: Text('Mês')),
+              RitmaSegmentedControl(
+                options: const [
+                  ('day', 'Dia'),
+                  ('week', 'Semana'),
+                  ('month', 'Mês'),
                 ],
-                selected: {_period},
-                onSelectionChanged: (s) => setState(() => _period = s.first),
+                selected: _period,
+                onChanged: (v) => setState(() => _period = v),
               ),
             ],
           ),

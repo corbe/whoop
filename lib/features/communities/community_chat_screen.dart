@@ -284,44 +284,66 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
   }
 
   Widget _buildInputBar() {
+    final scheme = Theme.of(context).colorScheme;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.image_outlined),
-              tooltip: 'Enviar imagem',
-              onPressed: _sendImage,
-            ),
-            IconButton(
-              icon: const Icon(Icons.attach_file),
-              tooltip: 'Enviar arquivo',
-              onPressed: _sendFile,
-            ),
-            IconButton(
-              icon: const Text('😊', style: TextStyle(fontSize: 20)),
-              tooltip: 'Emoji na mensagem',
-              onPressed: _openEmojiComposer,
-            ),
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                decoration: const InputDecoration(
-                  hintText: 'Mensagem…',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                onSubmitted: (_) => _send(),
+        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+        // Um único controle compacto (WHOOP composer): ícones + campo +
+        // enviar dentro do MESMO container — não botões Material soltos.
+        child: Container(
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.image_outlined, size: 20),
+                tooltip: 'Enviar imagem',
+                onPressed: _sendImage,
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: _send,
-              icon: const Icon(Icons.send),
-              tooltip: 'Enviar',
-            ),
-          ],
+              IconButton(
+                icon: const Icon(Icons.attach_file, size: 20),
+                tooltip: 'Enviar arquivo',
+                onPressed: _sendFile,
+              ),
+              IconButton(
+                icon: const Text('😊', style: TextStyle(fontSize: 18)),
+                tooltip: 'Emoji na mensagem',
+                onPressed: _openEmojiComposer,
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  decoration: const InputDecoration(
+                    hintText: 'Mensagem…',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    isDense: true,
+                  ),
+                  onSubmitted: (_) => _send(),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 2),
+                child: IconButton(
+                  onPressed: _send,
+                  icon: const Icon(Icons.arrow_upward, size: 20),
+                  style: IconButton.styleFrom(
+                    backgroundColor: scheme.primary,
+                    foregroundColor: scheme.onPrimary,
+                    disabledBackgroundColor:
+                        scheme.primary.withValues(alpha: 0.4),
+                  ),
+                  tooltip: 'Enviar',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

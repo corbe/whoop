@@ -29,7 +29,7 @@ class _NoanaWellnessAppState extends ConsumerState<NoanaWellnessApp> {
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
-      title: 'Noana Wellness',
+      title: 'RITMA',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

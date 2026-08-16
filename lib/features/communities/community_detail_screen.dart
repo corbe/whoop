@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ui/noana_widgets.dart';
 import '../../services/community_providers.dart';
 import '../../services/score_providers.dart';
 import '../../services/social_identity_provider.dart';
@@ -184,7 +185,8 @@ class _OverviewTab extends ConsumerWidget {
         Text(
           community.name,
           textAlign: TextAlign.center,
-          style: theme.textTheme.headlineSmall,
+          style: theme.textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 4),
         Text(
@@ -214,15 +216,31 @@ class _OverviewTab extends ConsumerWidget {
           ),
         const Divider(height: 32),
         if (community.description.isNotEmpty) ...[
-          Text('Descrição', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 4),
-          Text(community.description),
+          const RitmaSectionLabel('SOBRE', padding: EdgeInsets.zero),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(community.description),
+          ),
           const Divider(height: 32),
         ],
         if (community.visibility == 'public_code' && community.joinCode.isNotEmpty) ...[
-          Text('Código de entrada', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 4),
-          SelectableText(community.joinCode),
+          const RitmaSectionLabel('COMPARTILHAMENTO', padding: EdgeInsets.zero),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Text('Código de entrada', style: theme.textTheme.bodyMedium),
+                const Spacer(),
+                SelectableText(
+                  community.joinCode,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const Divider(height: 32),
         ],
         if (!community.chatSynced)

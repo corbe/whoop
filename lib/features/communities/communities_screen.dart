@@ -159,9 +159,14 @@ class _DiscoverListState extends ConsumerState<_DiscoverList> {
               return RefreshIndicator(
                 onRefresh: () async =>
                     ref.invalidate(discoverCommunitiesProvider),
-                child: ListView.builder(
+                child: ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   itemCount: filtered.length,
+                  separatorBuilder: (_, _) => const Divider(
+                    height: 1,
+                    indent: 76,
+                    endIndent: 16,
+                  ),
                   itemBuilder: (context, i) {
                     final community = filtered[i];
                     return NoanaCommunityRow(
@@ -222,9 +227,14 @@ class _CommunityList extends ConsumerWidget {
         }
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(provider),
-          child: ListView.builder(
+          child: ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 4),
             itemCount: communities.length,
+            separatorBuilder: (_, _) => const Divider(
+              height: 1,
+              indent: 76,
+              endIndent: 16,
+            ),
             itemBuilder: (context, i) {
               final community = communities[i];
               return NoanaCommunityRow(

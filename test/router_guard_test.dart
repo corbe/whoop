@@ -51,7 +51,7 @@ void main() {
 
       await pumpApp(tester, container);
 
-      expect(find.text('Noana Wellness'), findsOneWidget);
+      expect(find.text('RITMA'), findsOneWidget);
       expect(find.text('Entrar'), findsOneWidget);
     });
 
