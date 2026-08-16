@@ -65,6 +65,10 @@ class ChatController {
   })  : _juggle = juggle,
         _chatSession = chatSession;
 
+  /// Identidade autoritativa do usuário atual no JuggleIM (source of truth
+  /// para ownership de mensagens — NUNCA derivar de display name).
+  String? get sessionUserId => _juggle.session?.userId;
+
   final JuggleImService _juggle;
   final ChatSessionService _chatSession;
   final String conversationId;

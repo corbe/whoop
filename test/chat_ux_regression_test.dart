@@ -216,8 +216,18 @@ void main() {
         ),
       ),
       _msg(id: 'm3', senderId: 'wellness:ghost-9', text: 'Sou um fantasma'),
+      // Mensagem do USUÁRIO ATUAL (session userId = wellness:person-1).
+      _msg(id: 'm4', senderId: 'wellness:person-1', text: 'Minha mensagem'),
     ];
   });
+
+  /// Alinhamento do Align mais próximo do texto (o Align do bubble).
+  AlignmentGeometry bubbleAlignment(WidgetTester tester, Finder textFinder) {
+    final align = tester.widget<Align>(
+      find.ancestor(of: textFinder, matching: find.byType(Align)).first,
+    );
+    return align.alignment;
+  }
 
   testWidgets('long press on a message opens Reply/React/Copy sheet',
       (tester) async {
@@ -263,10 +273,65 @@ void main() {
 
     expect(find.text('Maria'), findsWidgets);
     expect(find.text('Membro'), findsWidgets);
+    // Nome do usuário atual NÃO deve repetir nos próprios bubbles.
+    expect(find.text('Ana'), findsNothing);
     // Nenhum ID bruto pode aparecer.
     expect(find.textContaining('wellness:'), findsNothing);
     expect(find.textContaining('other-1'), findsNothing);
     expect(find.textContaining('ghost-9'), findsNothing);
+    expect(find.textContaining('person-1'), findsNothing);
+  });
+
+  testWidgets('own message is RIGHT aligned; other messages LEFT',
+      (tester) async {
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+
+    expect(
+      bubbleAlignment(tester, find.text('Minha mensagem')),
+      Alignment.centerRight,
+      reason: 'mensagem do usuário atual deve estar à direita',
+    );
+    expect(
+      bubbleAlignment(tester, find.text('Olá pessoal!').first),
+      Alignment.centerLeft,
+      reason: 'mensagem de outro usuário deve estar à esquerda',
+    );
+  });
+
+  testWidgets('long press on OWN message still opens the action sheet',
+      (tester) async {
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('Minha mensagem'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Responder'), findsOneWidget);
+    expect(find.text('Reagir'), findsOneWidget);
+    expect(find.text('Copiar'), findsOneWidget);
+  });
+
+  testWidgets('reply and reactions work on both alignments', (tester) async {
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+
+    // Reply na mensagem DO OUTRO.
+    await tester.longPress(find.text('Bora treinar hoje?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Responder'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Respondendo a Maria'), findsOneWidget);
+
+    // Reações na mensagem PRÓPRIA (direita).
+    await tester.tap(find.text('Minha mensagem'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('Minha mensagem'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reagir'));
+    await tester.pumpAndSettle();
+    // Barra de reações rápidas do catálogo.
+    expect(find.text('❤️'), findsWidgets);
   });
 
   testWidgets('emoji composer button opens the picker (insert, not reaction)',

@@ -216,9 +216,10 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
       itemCount: state.messages.length,
       itemBuilder: (context, i) {
         final message = state.messages[i];
-        final senderIdentity = message.senderName == 'Você'
-            ? SocialIdentity(personUuid: message.senderId, displayName: 'Você')
-            : identities.resolveJuggleId(message.senderId);
+        // Ownership autoritativa é resolvida no _MessageBubble via
+        // currentJuggleUserId (senderId == session userId do JuggleIM).
+        // Identidade de exibição — nunca usada para ownership.
+        final senderIdentity = identities.resolveJuggleId(message.senderId);
         // Sender do reply: o SDK pode mandar senderDisplayName vazio/bruto —
         // resolve pela MESMA identidade (fallback "Membro", nunca id).
         final replyRef = message.replyTo?.copyWith(
@@ -232,6 +233,7 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
           child: _MessageBubble(
             message: message.copyWith(replyTo: replyRef),
             senderIdentity: senderIdentity,
+            currentJuggleUserId: _controller.sessionUserId ?? '',
             quickReactions: quickReactions,
             onOpenProfile: () {
             final personUuid =
@@ -377,6 +379,7 @@ class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
     required this.message,
     required this.senderIdentity,
+    required this.currentJuggleUserId,
     required this.quickReactions,
     required this.onOpenProfile,
     required this.onReply,
@@ -390,6 +393,7 @@ class _MessageBubble extends StatelessWidget {
 
   final ChatMessage message;
   final SocialIdentity senderIdentity;
+  final String currentJuggleUserId;
   final List<String> quickReactions;
   final VoidCallback onOpenProfile;
   final VoidCallback onReply;
@@ -403,7 +407,8 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isMine = message.senderName == 'Você' || message.localPending;
+    // Ownership vem do ID autoritativo do usuário JuggleIM (nunca do nome).
+    final isMine = message.senderId == currentJuggleUserId;
     return Listener(
       onPointerDown: (_) => onScrollToBottom(),
       onPointerUp: (_) => onScrollAway(),
