@@ -160,14 +160,22 @@ class _AchievementsList extends ConsumerWidget {
       error: (e, _) => Text('Falha ao carregar conquistas: $e'),
       data: (achievements) {
         // Unlock UX dedup (spec §52): celebra apenas os novos da sessão.
+        // A MARCAÇÃO (escrita em CelebratedUnlocks) e o diálogo são efeitos
+        // pós-montagem: escrever um provider dentro de build() viola o Riverpod
+        // ("Tried to modify a provider while the widget tree was building").
+        // O read() abaixo é somente leitura; toda mutação roda no callback
+        // pós-frame, re-avaliando o conjunto celebrado no momento da execução
+        // (idempotente mesmo se o build rodar mais de uma vez no mesmo frame).
         final controller = ref.read(gamificationActionControllerProvider);
         final newly = controller.newlyUnlocked(achievements);
-        for (final a in newly) {
-          controller.markCelebrated(a.code);
-        }
         if (newly.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
+            final stillNew = controller.newlyUnlocked(achievements);
+            if (stillNew.isEmpty) return;
+            for (final a in stillNew) {
+              controller.markCelebrated(a.code);
+            }
             showDialog(
               context: context,
               builder: (_) => AlertDialog(
@@ -176,7 +184,7 @@ class _AchievementsList extends ConsumerWidget {
                 title: const Text('Conquista desbloqueada!'),
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: newly
+                  children: stillNew
                       .map((a) => Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Text('${_iconFor(a.iconKey) == Icons.emoji_events ? "🏆" : "⭐"} ${a.name}',
@@ -194,9 +202,16 @@ class _AchievementsList extends ConsumerWidget {
             );
           });
         }
-        return Column(
+        return GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          padding: const EdgeInsets.all(16),
+          childAspectRatio: 0.95,
           children: achievements
-              .map((a) => _AchievementCard(achievement: a))
+              .map((a) => _AchievementTile(achievement: a))
               .toList(),
         );
       },
@@ -204,8 +219,9 @@ class _AchievementsList extends ConsumerWidget {
   }
 }
 
-class _AchievementCard extends StatelessWidget {
-  const _AchievementCard({required this.achievement});
+/// Tile compacto WHOOP-style: ícone + nome (+ progresso quando bloqueado).
+class _AchievementTile extends StatelessWidget {
+  const _AchievementTile({required this.achievement});
 
   final Achievement achievement;
 
@@ -214,67 +230,60 @@ class _AchievementCard extends StatelessWidget {
     final theme = Theme.of(context);
     final unlocked = achievement.unlocked;
     final icon = _iconFor(achievement.iconKey);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      color: unlocked ? theme.colorScheme.primaryContainer : null,
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: unlocked
-              ? theme.colorScheme.primary
-              : theme.colorScheme.surfaceContainerHighest,
-          child: Icon(icon,
-              color: unlocked ? Colors.white : theme.colorScheme.secondary),
-        ),
-        title: Text(achievement.name,
-            style: TextStyle(
-                fontWeight: unlocked ? FontWeight.bold : FontWeight.normal)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      decoration: BoxDecoration(
+        color: unlocked
+            ? theme.colorScheme.primaryContainer
+            : theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(8),
+      child: Opacity(
+        opacity: unlocked ? 1 : 0.5,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(achievement.description,
-                style: theme.textTheme.bodySmall),
-            if (!unlocked)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: LinearProgressIndicator(
-                        value: achievement.target == 0
-                            ? 0
-                            : achievement.progress / achievement.target,
-                        minHeight: 4,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${achievement.progress} / ${achievement.target}',
-                      style: theme.textTheme.labelSmall,
-                    ),
-                  ],
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: unlocked
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.surfaceContainerHighest,
+                  child: Icon(icon,
+                      size: 20,
+                      color: unlocked
+                          ? Colors.white
+                          : theme.colorScheme.onSurfaceVariant),
                 ),
-              )
-            else if (achievement.unlockedAt != null)
+                if (!unlocked)
+                  const Positioned(
+                    right: -4,
+                    bottom: -4,
+                    child: Icon(Icons.lock_outline,
+                        size: 12, color: Colors.black54),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              achievement.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: unlocked ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+            if (!unlocked && achievement.target > 1)
               Text(
-                'Desbloqueado ${_formatDate(achievement.unlockedAt!)}',
+                '${achievement.progress}/${achievement.target}',
                 style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.primary),
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
           ],
         ),
-        isThreeLine: true,
       ),
     );
-  }
-
-  String _formatDate(DateTime dt) {
-    final local = dt.toLocal();
-    final day = local.day.toString().padLeft(2, '0');
-    final month = [
-      'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
-      'jul', 'ago', 'set', 'out', 'nov', 'dez'
-    ][local.month - 1];
-    return '$day $month ${local.year}';
   }
 }

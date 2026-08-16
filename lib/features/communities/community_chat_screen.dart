@@ -316,9 +316,10 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(
+            IconButton(
               onPressed: _send,
               icon: const Icon(Icons.send),
+              tooltip: 'Enviar',
             ),
           ],
         ),
@@ -433,7 +434,7 @@ class _MessageBubble extends StatelessWidget {
                     color: isMine
                         ? theme.colorScheme.primaryContainer
                         : theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 6),
@@ -525,8 +526,10 @@ class _MessageBubble extends StatelessWidget {
       ),
       child: IconButton(
         icon: const Icon(Icons.more_horiz),
-        iconSize: 18,
+        iconSize: 16,
         visualDensity: VisualDensity.compact,
+        color: Theme.of(context).colorScheme.onSurfaceVariant
+            .withValues(alpha: 0.6),
         tooltip: 'Ações',
         onPressed: () => _showActions(context),
       ),

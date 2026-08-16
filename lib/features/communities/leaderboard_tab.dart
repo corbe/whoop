@@ -10,7 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/score_providers.dart';
 import '../../services/wellness_identity_providers.dart';
 import '../../shared/models/score.dart';
-import '../../shared/models/social_identity.dart';
+import '../../core/ui/noana_widgets.dart';
 import 'member_profile_screen.dart';
 
 class LeaderboardTab extends ConsumerStatefulWidget {
@@ -143,56 +143,13 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
   Widget _entryTile(BuildContext context, CommunityRanking ranking, CommunityRankingEntry e, String? myUuid) {
     final isMe = myUuid != null && e.personUuid == myUuid;
     final highlight = isMe || (ranking.currentUserPosition == e.position);
-    final identity = SocialIdentity(
-      personUuid: e.personUuid,
-      displayName: e.displayName,
+    return NoanaRankRow(
+      position: e.position,
+      name: e.displayName.isNotEmpty ? e.displayName : 'Membro',
+      value: e.score.toStringAsFixed(1),
       avatarUrl: e.avatarUrl,
-    );
-    final medal = switch (e.position) {
-      1 => '🥇',
-      2 => '🥈',
-      3 => '🥉',
-      _ => null,
-    };
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-        foregroundImage: identity.hasAvatar ? NetworkImage(identity.avatarUrl) : null,
-        child: identity.hasAvatar ? null : Text(identity.initial),
-      ),
-      title: Row(
-        children: [
-          if (medal != null) ...[
-            Text(medal, style: const TextStyle(fontSize: 18)),
-            const SizedBox(width: 6),
-          ],
-          Flexible(
-            child: Text(
-              identity.safeDisplayName,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ),
-        ],
-      ),
-      subtitle: Text('${e.daysCount} dia(s) de dados'),
-      trailing: Text(
-        e.score.toStringAsFixed(1),
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: highlight ? Theme.of(context).colorScheme.primary : null,
-              fontWeight: FontWeight.w600,
-            ),
-      ),
-      tileColor: isMe
-          ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4)
-          : (medal != null
-              ? Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.5)
-              : null),
+      subtitle: '${e.daysCount} ${e.daysCount == 1 ? 'dia' : 'dias'} de dados',
+      highlight: highlight,
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(

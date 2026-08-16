@@ -93,14 +93,15 @@ void main() {
       expect(find.text('Maria'), findsOneWidget);
       // Papel de membro comum NÃO é exibido (redundante).
       expect(find.text('Membro'), findsNothing);
-      expect(find.text('#4'), findsOneWidget);
-      expect(find.text('de 28'), findsOneWidget);
-      expect(find.text('12 dias'), findsOneWidget);
-      expect(find.text('Desafios'), findsOneWidget);
+      expect(find.textContaining('#4'), findsOneWidget);
+      expect(find.textContaining('na comunidade'), findsOneWidget);
+      expect(find.textContaining('12 dias'), findsOneWidget);
+      expect(find.text('DESAFIOS'), findsOneWidget);
       expect(find.text('Ativos'), findsOneWidget);
       expect(find.text('Concluídos'), findsOneWidget);
       expect(find.text('Vitórias'), findsOneWidget);
       expect(find.text('Top 3'), findsOneWidget);
+      expect(find.text('CONQUISTAS'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Primeiro Desafio'), 200,
           scrollable: find.byType(Scrollable).first);
       expect(find.text('Primeiro Desafio'), findsOneWidget);

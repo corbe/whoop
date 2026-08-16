@@ -12,6 +12,7 @@ import '../../services/challenge_providers.dart';
 import '../../services/wellness_identity_providers.dart';
 import '../../shared/models/social_identity.dart';
 import '../../shared/models/challenge.dart';
+import '../../core/ui/noana_widgets.dart';
 import 'challenge_status_ui.dart';
 import 'member_profile_screen.dart';
 
@@ -437,35 +438,19 @@ class _RankingSection extends ConsumerWidget {
               color: isMe
                   ? Theme.of(context).colorScheme.primaryContainer
                   : null,
-              child: ListTile(
-                dense: true,
-                leading: SizedBox(
-                  width: 36,
-                  child: Text(
-                    e.position == null ? '–' : '#${e.position}',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                title: Text(
-                  SocialIdentity(
-                    personUuid: e.personUuid,
-                    displayName: e.displayName,
-                    avatarUrl: e.avatarUrl,
-                  ).safeDisplayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              child: NoanaRankRow(
+                position: e.position ?? 0,
+                name: SocialIdentity(
+                  personUuid: e.personUuid,
+                  displayName: e.displayName,
+                  avatarUrl: e.avatarUrl,
+                ).safeDisplayName,
+                value: e.score.toStringAsFixed(1),
+                avatarUrl: e.avatarUrl,
                 subtitle: e.qualified
-                    ? Text('${e.daysCount} ${e.daysCount == 1 ? 'dia' : 'dias'}')
-                    : const Text('Não qualificado'),
-                trailing: Text(
-                  e.score.toStringAsFixed(1),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                    ? '${e.daysCount} ${e.daysCount == 1 ? 'dia' : 'dias'}'
+                    : 'Não qualificado',
+                highlight: e.personUuid == myUuid,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(

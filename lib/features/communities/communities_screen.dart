@@ -8,9 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ui/noana_widgets.dart';
 import '../../services/community_providers.dart';
 import '../../shared/models/community.dart';
-import 'community_card.dart';
 
 class CommunitiesScreen extends ConsumerStatefulWidget {
   const CommunitiesScreen({super.key});
@@ -160,17 +160,24 @@ class _DiscoverListState extends ConsumerState<_DiscoverList> {
                 onRefresh: () async =>
                     ref.invalidate(discoverCommunitiesProvider),
                 child: ListView.builder(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
                   itemCount: filtered.length,
                   itemBuilder: (context, i) {
                     final community = filtered[i];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: CommunityCard(
-                        community: community,
-                        onTap: () =>
-                            context.push('/communities/${community.uuid}'),
+                    return NoanaCommunityRow(
+                      name: community.name,
+                      memberCount: community.memberCount,
+                      avatarUrl: community.avatarUrl,
+                      subtitle: community.description.trim().isEmpty
+                          ? null
+                          : community.description.trim(),
+                      trailing: FilledButton(
+                        onPressed: () => context
+                            .push('/communities/${community.uuid}'),
+                        child: const Text('Entrar'),
                       ),
+                      onTap: () =>
+                          context.push('/communities/${community.uuid}'),
                     );
                   },
                 ),
@@ -216,17 +223,16 @@ class _CommunityList extends ConsumerWidget {
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(provider),
           child: ListView.builder(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(vertical: 4),
             itemCount: communities.length,
             itemBuilder: (context, i) {
               final community = communities[i];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: CommunityCard(
-                  community: community,
-                  onTap: () =>
-                      context.push('/communities/${community.uuid}'),
-                ),
+              return NoanaCommunityRow(
+                name: community.name,
+                memberCount: community.memberCount,
+                avatarUrl: community.avatarUrl,
+                onTap: () =>
+                    context.push('/communities/${community.uuid}'),
               );
             },
           ),

@@ -44,21 +44,50 @@ abstract final class AppTheme {
   static ThemeData dark() => _build(_scheme(Brightness.dark));
 
   static ThemeData _build(ColorScheme scheme) {
-    return ThemeData(
+    final base = ThemeData(
       colorScheme: scheme,
       useMaterial3: true,
+    );
+    return base.copyWith(
       appBarTheme: AppBarTheme(
         centerTitle: false,
         backgroundColor: scheme.surface,
         foregroundColor: scheme.primary, // brand purple title/back arrow
         elevation: 0,
+        titleTextStyle: base.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: scheme.onSurface,
+        ),
       ),
       // Brand-colored icons everywhere (site iconography is purple-dominant).
       iconTheme: IconThemeData(color: scheme.primary),
       cardTheme: CardThemeData(
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         color: scheme.surfaceContainerLow,
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant.withValues(alpha: 0.6),
+        thickness: 0.5,
+        space: 1,
+      ),
+      // Compact WHOOP-like tab bar: thin purple underline, muted unselected.
+      tabBarTheme: TabBarThemeData(
+        labelColor: scheme.primary,
+        unselectedLabelColor: scheme.onSurfaceVariant,
+        labelStyle: base.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: base.textTheme.labelLarge,
+        indicatorColor: scheme.primary,
+        indicatorSize: TabBarIndicatorSize.label,
+        dividerColor: Colors.transparent,
+        overlayColor: WidgetStatePropertyAll(
+          scheme.primary.withValues(alpha: 0.08),
+        ),
       ),
       // Primary CTA = brand orange, like the site's buy/assine buttons.
       filledButtonTheme: FilledButtonThemeData(
@@ -66,7 +95,16 @@ abstract final class AppTheme {
           backgroundColor: scheme.secondary,
           foregroundColor: scheme.onSecondary,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      listTileTheme: ListTileThemeData(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     );

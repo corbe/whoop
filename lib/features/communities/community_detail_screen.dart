@@ -365,6 +365,21 @@ class _MembersTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final membersAsync = ref.watch(communityMembersProvider(uuid));
     final identities = ref.watch(socialIdentityProvider(uuid));
+    // Posição real no ranking padrão (readiness/semana) para o subtítulo —
+    // só quando o backend tem o membro no ranking; senão, sem subtítulo.
+    final rankingAsync = ref.watch(communityRankingProvider((
+      uuid: uuid,
+      metric: 'readiness',
+      period: 'week',
+      date: null,
+    )));
+    final positions = <String, int>{};
+    final ranking = rankingAsync.valueOrNull;
+    if (ranking != null) {
+      for (final e in ranking.entries) {
+        positions[e.personUuid] = e.position;
+      }
+    }
     return membersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       error: (e, _) => Center(child: Text('Falha: $e')),
@@ -392,12 +407,7 @@ class _MembersTab extends ConsumerWidget {
                       : Text(identity.initial),
                 ),
                 title: Text(identity.safeDisplayName),
-                subtitle: MemberProfileScreen.memberRoleLabel(member.role) ==
-                        null
-                    ? null
-                    : Text(
-                        MemberProfileScreen.memberRoleLabel(member.role)!,
-                      ),
+                subtitle: _memberSubtitle(context, member, positions),
                 trailing: community.isOwner && member.personUuid != community.ownerPersonUuid
                     ? _memberActions(context, ref, member)
                     : null,
@@ -415,6 +425,29 @@ class _MembersTab extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  /// Subtítulo do membro: papel privilegiado (Dono/Administrador) e/ou
+  /// posição real no ranking (readiness/semana) quando disponível.
+  /// Membro comum SEM rótulo redundante — nunca 'Membro' como papel.
+  Widget? _memberSubtitle(
+    BuildContext context,
+    CommunityMember member,
+    Map<String, int> positions,
+  ) {
+    final theme = Theme.of(context);
+    final roleLabel = MemberProfileScreen.memberRoleLabel(member.role);
+    final rank = positions[member.personUuid];
+    final parts = <String>[
+      ?roleLabel,
+      if (rank != null) '#$rank no ranking',
+    ];
+    if (parts.isEmpty) return null;
+    return Text(
+      parts.join(' • '),
+      style: theme.textTheme.bodySmall
+          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
     );
   }
 

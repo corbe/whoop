@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/ui/noana_widgets.dart';
 import '../../services/community_providers.dart';
 import '../../shared/models/social_profile.dart';
 
@@ -117,143 +118,105 @@ class MemberProfileScreen extends ConsumerWidget {
                   ?.copyWith(color: theme.colorScheme.primary),
             ),
           ),
-        const Divider(height: 32),
-
-        // ── rank comunitário ──
-        if (profile.communityRank.rank != null) ...[
-          _StatCard(
-            icon: '🏆',
-            title: 'Comunidade',
-            value: '#${profile.communityRank.rank}',
-            detail: profile.communityRank.total != null
-                ? 'de ${profile.communityRank.total}'
-                : null,
-          ),
-          const SizedBox(height: 12),
-        ],
-
-        // ── streak ──
-        if (profile.streakDays > 0) ...[
-          _StatCard(
-            icon: '🔥',
-            title: 'Streak',
-            value: '${profile.streakDays} ${profile.streakDays == 1 ? 'dia' : 'dias'}',
-          ),
-          const SizedBox(height: 12),
-        ],
-
-        // ── desafios ──
-        if (!profile.challenges.isEmpty) ...[
-          _StatCard(
-            icon: '🎯',
-            title: 'Desafios',
-            value: '',
-            detail: '',
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _StatItem(label: 'Ativos', value: '${profile.challenges.active}'),
-                _StatItem(
-                    label: 'Concluídos', value: '${profile.challenges.completed}'),
-                _StatItem(label: 'Vitórias', value: '${profile.challenges.wins}'),
-                _StatItem(label: 'Top 3', value: '${profile.challenges.top3}'),
-              ],
+        // Rank comunitário no header (WHOOP-style hierarquia).
+        if (profile.communityRank.rank != null)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '#${profile.communityRank.rank} '
+                '${profile.communityRank.total != null ? 'de ${profile.communityRank.total}' : ''}'
+                ' na comunidade',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-        ] else ...[
-          const Text(
-            'Este membro ainda não concluiu desafios.',
-            style: TextStyle(fontStyle: FontStyle.italic),
-          ),
-          const SizedBox(height: 12),
-        ],
+        const Divider(height: 32),
 
-        // ── conquistas ──
-        Text('🏅 Conquistas', style: theme.textTheme.titleMedium),
+        // ── stats compactas (só com dados reais) ──
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            if (profile.streakDays > 0)
+              NoanaMetricValue(
+                '${profile.streakDays}',
+                subtitle: '🔥 ${profile.streakDays} '
+                    '${profile.streakDays == 1 ? 'dia' : 'dias'} de streak',
+              ),
+            if (profile.badges.isNotEmpty)
+              NoanaMetricValue('${profile.badges.length}',
+                  subtitle: '🏅 conquistas'),
+            if (profile.challenges.completed > 0)
+              NoanaMetricValue('${profile.challenges.completed}',
+                  subtitle: '🎯 desafios'),
+          ],
+        ),
         const SizedBox(height: 8),
-        if (profile.badges.isEmpty)
-          const Text(
-            'Nenhuma conquista ainda.',
-            style: TextStyle(fontStyle: FontStyle.italic),
+
+        // ── desafios ──
+        const NoanaSectionHeader('DESAFIOS'),
+        if (!profile.challenges.isEmpty)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _StatItem(label: 'Ativos', value: '${profile.challenges.active}'),
+              _StatItem(
+                  label: 'Concluídos', value: '${profile.challenges.completed}'),
+              _StatItem(label: 'Vitórias', value: '${profile.challenges.wins}'),
+              _StatItem(label: 'Top 3', value: '${profile.challenges.top3}'),
+            ],
           )
         else
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: profile.badges
-                .map((b) => Chip(
-                      label: Text(b.name),
-                      avatar: b.iconKey.isNotEmpty
-                          ? null
-                          : const Icon(Icons.emoji_events, size: 16),
-                    ))
-                .toList(),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Este membro ainda não concluiu desafios.',
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ),
+        const SizedBox(height: 16),
+
+        // ── conquistas ──
+        const NoanaSectionHeader('CONQUISTAS'),
+        if (profile.badges.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Nenhuma conquista ainda.',
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: profile.badges
+                  .map((b) => Chip(
+                        label: Text(b.name),
+                        avatar: b.iconKey.isNotEmpty
+                            ? null
+                            : const Icon(Icons.emoji_events, size: 16),
+                      ))
+                  .toList(),
+            ),
           ),
 
         if (joinedAt != null) ...[
           const Divider(height: 32),
-          Text(
-            'Membro desde $joinedAt',
-            style: theme.textTheme.bodySmall,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Membro desde $joinedAt',
+              style: theme.textTheme.bodySmall,
+            ),
           ),
         ],
       ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.title,
-    required this.value,
-    this.detail,
-    this.child,
-  });
-
-  final String icon;
-  final String title;
-  final String value;
-  final String? detail;
-  final Widget? child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(icon, style: const TextStyle(fontSize: 20)),
-                const SizedBox(width: 8),
-                Text(title, style: theme.textTheme.titleSmall),
-                const Spacer(),
-                if (value.isNotEmpty)
-                  Text(
-                    value,
-                    style: theme.textTheme.titleLarge
-                        ?.copyWith(color: theme.colorScheme.primary),
-                  )
-                else if (detail != null)
-                  Text(detail!, style: theme.textTheme.bodySmall),
-              ],
-            ),
-            if (detail != null && value.isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text(detail!, style: theme.textTheme.bodySmall),
-            ],
-            if (child != null) ...[
-              const SizedBox(height: 12),
-              child!,
-            ],
-          ],
-        ),
-      ),
     );
   }
 }
