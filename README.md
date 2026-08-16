@@ -29,7 +29,8 @@ social inspirada no WHOOP, com domínio e arquitetura próprios da Noana.
                                   Leaderboard
 ```
 
-- **COGNITO = AUTHENTICATION** — pool compartilhado Noana (`us-east-1_lgjiHS5hH`).
+- **COGNITO = AUTHENTICATION** — pools por ambiente (HML `us-east-1_BFGyiLUlb`
+  / PROD `us-east-1_YlgSPEfCc`), configurados via `AppConfig`.
 - **WELLNESS BACKEND = IDENTITY + BUSINESS RULES** — app Django `wellness` no
   backend Noana existente (`noana-admin`).
 - **FLUTTER = SCORE CALCULATION (fase 1) + UI + BLE + SDK JuggleIM**.
@@ -45,8 +46,13 @@ Clinical e Wellness são domínios separados. Wellness **não** reutiliza
 
 ## Cognito authentication
 
-- Pool: `us-east-1_lgjiHS5hH` (compartilhado Clinical × Wellness).
-- App client: `156qt3qr79mu4jsnr5t82hot15`.
+- Pools por ambiente (env-scoped, wellness — NÃO o pool clínico):
+  - HML/dev: `us-east-1_BFGyiLUlb` · client `6dj5pdv3fnrg8jbknu12ljg30k`
+    (`noana-hml-client`, PUBLIC sem secret, `USER_PASSWORD_AUTH`).
+  - PROD: `us-east-1_YlgSPEfCc` · client `40h05k8dale4f4bdr14ccgms79`.
+- Configuração em `lib/core/config/app_config.dart` (campos
+  `cognitoPoolId`/`cognitoClientId`); o `AmplifyCognitoGateway` monta o JSON
+  do Amplify dinamicamente a partir do `AppConfig` do ambiente.
 - Fluxo: Flutter → AWS Cognito (Amplify `USER_SRP_AUTH`) → JWT → Wellness API
   → resolve/create `WellnessPerson` (fase 2).
 - `AuthService` (`lib/core/auth/auth_service.dart`) expõe:
