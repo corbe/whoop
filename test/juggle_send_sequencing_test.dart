@@ -36,6 +36,10 @@ class _FakeSdk implements JuggleIm {
   bool sendMessageCalled = false;
   DataCallback<Message>? lastCallback;
 
+  /// Estado nativo reportado por getConnectionStatus (default: desconhecido
+  /// → o teste força o caminho de eventos). -1 = lança (SDK indisponível).
+  int nativeStatus = -1;
+
   void emitStatus(int status) {
     listener?.onConnectionStatusChange(status, 0, '');
   }
@@ -45,6 +49,12 @@ class _FakeSdk implements JuggleIm {
     if (cb == null) return;
     final msg = Message(Conversation(2, 'grp'))..messageId = 'mid-1';
     cb(msg, errorCode);
+  }
+
+  @override
+  Future<int> getConnectionStatus() async {
+    if (nativeStatus < 0) throw StateError('no native status');
+    return nativeStatus;
   }
 
   @override
@@ -194,6 +204,35 @@ void main() {
       expect(result.ok, isFalse);
       expect(result.errorCode, 13002);
       expect(result.messageId, 'mid-1');
+    });
+
+    test(
+        'dart preso em connecting mas nativo connected → gate passa via '
+        'consulta nativa (sync de estado)', () async {
+      // Evento de status PERDIDO (nativo conectou, Dart segue 'connecting').
+      sdk.nativeStatus = ConnectionStatus.connected;
+      final future = svc.sendText('g1', 2, 'oi');
+      await Future<void>.delayed(Duration.zero);
+      expect(sdk.sendMessageCalled, isTrue,
+          reason: 'estado nativo autoritativo deve liberar o envio');
+      sdk.completeSend();
+      final result = await future;
+      expect(result.ok, isTrue);
+      expect(result.errorCode, 0);
+    });
+
+    test('dart connecting e nativo ainda conectando → espera o evento',
+        () async {
+      sdk.nativeStatus = ConnectionStatus.connecting;
+      final future = svc.sendText('g1', 2, 'oi');
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(sdk.sendMessageCalled, isFalse,
+          reason: 'nativo ainda não conectado → NÃO envia');
+      sdk.emitStatus(ConnectionStatus.connected);
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(sdk.sendMessageCalled, isTrue);
+      sdk.completeSend();
+      expect((await future).ok, isTrue);
     });
   });
 }

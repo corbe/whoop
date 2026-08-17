@@ -180,6 +180,13 @@ class JuggleImService {
   /// errorCode=-1. Este gate espera o estado `connected` (bounded) e só então
   /// o envio é disparado — o ack chega em <1s com a conexão de pé.
   ///
+  /// Estado AUTORITATIVO (fix 2, emulador x86_64): o enum local é alimentado
+  /// pelo evento nativo de status via plugin — esse evento se perdeu em
+  /// connects limpos (native ConnConnectedState no jlog, Dart preso em
+  /// `connecting`). O gate consulta o SDK nativo diretamente
+  /// (getConnectionStatus) e sincroniza o enum — nunca depende de um evento
+  /// que pode não chegar.
+  ///
   /// Retorna true se já conectado ou conectou dentro do bound; false em
   /// timeout ou falha de conexão (o chamador decide: falha imediata).
   Future<bool> waitUntilConnected({
@@ -187,6 +194,8 @@ class JuggleImService {
   }) async {
     if (_state == JuggleConnectionState.connected) return true;
     final completer = Completer<bool>();
+    // A sub é criada ANTES de qualquer await — um evento de status emitido
+    // durante a consulta nativa abaixo NÃO pode ser perdido.
     late final StreamSubscription<JuggleConnectionState> sub;
     sub = statusStream.listen((s) {
       if (completer.isCompleted) return;
@@ -196,6 +205,22 @@ class JuggleImService {
         completer.complete(false);
       }
     });
+    // Estado AUTORITATIVO (fix 2, emulador x86_64): o enum local é alimentado
+    // pelo evento nativo de status via plugin — esse evento se perdeu em
+    // connects limpos (native ConnConnectedState no jlog, Dart preso em
+    // `connecting`). Consulta direta ao SDK nativo sincroniza o enum — nunca
+    // depende de um evento que pode não chegar.
+    try {
+      final nativeStatus = await _sdk.getConnectionStatus();
+      // ignore: avoid_print
+      print('[juggle] waitUntilConnected dart=$_state native=$nativeStatus');
+      if (nativeStatus == ConnectionStatus.connected) {
+        _setState(JuggleConnectionState.connected);
+        if (!completer.isCompleted) completer.complete(true);
+      }
+    } catch (_) {
+      // SDK indisponível: segue o caminho de eventos
+    }
     final ok = await completer.future.timeout(timeout, onTimeout: () => false);
     await sub.cancel();
     return ok;
