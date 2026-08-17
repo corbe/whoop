@@ -10,8 +10,12 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:juggle_im/model/conversation.dart' show ConversationType;
+import 'package:juggle_im/model/message.dart' show Message;
 
+import '../core/providers.dart' show apiClientProvider;
 import '../shared/models/chat.dart';
+import 'chat_push_reporter.dart';
 import 'chat_session_service.dart';
 import 'juggle_im_service.dart';
 
@@ -64,8 +68,10 @@ class ChatController {
     required ChatSessionService chatSession,
     required this.conversationId,
     required this.conversationType,
-  })  : _juggle = juggle,
-        _chatSession = chatSession;
+    ChatPushReporter? pushReporter,
+  }) : _juggle = juggle,
+       _chatSession = chatSession,
+       _pushReporter = pushReporter;
 
   /// Identidade autoritativa do usuário atual no JuggleIM (source of truth
   /// para ownership de mensagens — NUNCA derivar de display name).
@@ -73,6 +79,7 @@ class ChatController {
 
   final JuggleImService _juggle;
   final ChatSessionService _chatSession;
+  final ChatPushReporter? _pushReporter;
   final String conversationId;
   final int conversationType;
 
@@ -131,11 +138,11 @@ class ChatController {
     final before = reset
         ? null
         : (_state.messages.isEmpty
-            ? null
-            : _state.messages
-                .map((m) => m.createdAt)
-                .whereType<DateTime>()
-                .reduce((a, b) => a.isBefore(b) ? a : b));
+              ? null
+              : _state.messages
+                    .map((m) => m.createdAt)
+                    .whereType<DateTime>()
+                    .reduce((a, b) => a.isBefore(b) ? a : b));
     _emit(_state.copyWith(loadingOlder: true, initialLoading: reset));
     try {
       final page = await _juggle.loadHistory(
@@ -144,22 +151,26 @@ class ChatController {
         before: before,
       );
       final merged = _mergeDedup(reset ? page : [...page, ..._state.messages]);
-      _emit(_state.copyWith(
-        messages: merged,
-        hasMore: page.length >= 30,
-        loadingOlder: false,
-        initialLoading: false,
-        error: null,
-      ));
+      _emit(
+        _state.copyWith(
+          messages: merged,
+          hasMore: page.length >= 30,
+          loadingOlder: false,
+          initialLoading: false,
+          error: null,
+        ),
+      );
       if (!reset) {
         await _juggle.markConversationRead(conversationId, conversationType);
       }
     } catch (e) {
-      _emit(_state.copyWith(
-        loadingOlder: false,
-        initialLoading: false,
-        error: 'Falha ao carregar histórico: $e',
-      ));
+      _emit(
+        _state.copyWith(
+          loadingOlder: false,
+          initialLoading: false,
+          error: 'Falha ao carregar histórico: $e',
+        ),
+      );
     }
   }
 
@@ -206,13 +217,17 @@ class ChatController {
     final rIdx = reactions.indexWhere((r) => r.emoji == emoji);
     if (add) {
       if (rIdx >= 0) {
-        reactions[rIdx] = reactions[rIdx].copyWith(count: reactions[rIdx].count + 1);
+        reactions[rIdx] = reactions[rIdx].copyWith(
+          count: reactions[rIdx].count + 1,
+        );
       } else {
         reactions.add(ChatReaction(emoji: emoji, count: 1));
       }
     } else {
       if (rIdx >= 0) {
-        final updated = reactions[rIdx].copyWith(count: reactions[rIdx].count - 1);
+        final updated = reactions[rIdx].copyWith(
+          count: reactions[rIdx].count - 1,
+        );
         if (updated.count <= 0) {
           reactions.removeAt(rIdx);
         } else {
@@ -226,8 +241,12 @@ class ChatController {
 
   // ── envio (spec §49 — otimista) ────────────────────────────────────
 
-  ChatMessage _pending(String id, String text, ChatReplyRef? replyTo,
-      [List<ChatAttachment> attachments = const []]) {
+  ChatMessage _pending(
+    String id,
+    String text,
+    ChatReplyRef? replyTo, [
+    List<ChatAttachment> attachments = const [],
+  ]) {
     return ChatMessage(
       id: id,
       conversationId: conversationId,
@@ -235,7 +254,9 @@ class ChatController {
       senderId: _juggle.session?.userId ?? 'me',
       senderName: 'Você',
       type: attachments.isNotEmpty
-          ? (attachments.first.isImage ? ChatMessageType.image : ChatMessageType.file)
+          ? (attachments.first.isImage
+                ? ChatMessageType.image
+                : ChatMessageType.file)
           : ChatMessageType.text,
       text: text,
       replyTo: replyTo,
@@ -261,19 +282,27 @@ class ChatController {
     return result;
   }
 
-  Future<SendResult> sendImage(String localPath,
-      {void Function(int)? onProgress}) async {
+  Future<SendResult> sendImage(
+    String localPath, {
+    void Function(int)? onProgress,
+  }) async {
     final pendingId = 'local-${DateTime.now().microsecondsSinceEpoch}';
     final fileExists = File(localPath).existsSync();
-    debugPrint('[chat] sendImage pending=$pendingId path=$localPath '
-        'exists=$fileExists size=${fileExists ? File(localPath).lengthSync() : 0} '
-        'sessionUserId=${_juggle.session?.userId}');
-    _upsert(_pending(
-      pendingId,
-      '',
-      _state.replyTarget,
-      [ChatAttachment(name: 'image.jpg', mimeType: 'image/jpeg', size: 0, localPath: localPath)],
-    ));
+    debugPrint(
+      '[chat] sendImage pending=$pendingId path=$localPath '
+      'exists=$fileExists size=${fileExists ? File(localPath).lengthSync() : 0} '
+      'sessionUserId=${_juggle.session?.userId}',
+    );
+    _upsert(
+      _pending(pendingId, '', _state.replyTarget, [
+        ChatAttachment(
+          name: 'image.jpg',
+          mimeType: 'image/jpeg',
+          size: 0,
+          localPath: localPath,
+        ),
+      ]),
+    );
     final result = await _juggle.sendImage(
       conversationId,
       conversationType,
@@ -292,12 +321,16 @@ class ChatController {
     void Function(int)? onProgress,
   }) async {
     final pendingId = 'local-${DateTime.now().microsecondsSinceEpoch}';
-    _upsert(_pending(
-      pendingId,
-      '',
-      _state.replyTarget,
-      [ChatAttachment(name: name, mimeType: mimeType, size: size, localPath: localPath)],
-    ));
+    _upsert(
+      _pending(pendingId, '', _state.replyTarget, [
+        ChatAttachment(
+          name: name,
+          mimeType: mimeType,
+          size: size,
+          localPath: localPath,
+        ),
+      ]),
+    );
     final result = await _juggle.sendFile(
       conversationId,
       conversationType,
@@ -312,16 +345,25 @@ class ChatController {
   }
 
   void _finalizeSend(String pendingId, SendResult result) {
-    debugPrint('[chat] _finalizeSend pending=$pendingId ok=${result.ok} '
-        'errorCode=${result.errorCode} finalId=${result.message?.messageId} '
-        'finalSender=${result.message?.senderUserId}');
+    debugPrint(
+      '[chat] _finalizeSend pending=$pendingId ok=${result.ok} '
+      'errorCode=${result.errorCode} finalId=${result.message?.messageId} '
+      'finalSender=${result.message?.senderUserId}',
+    );
     if (result.ok && result.message != null) {
+      // Captura o pending ANTES de remover (texto + replyTo do envio) para
+      // o report app-side de push (§19) — fire-and-forget, nunca bloqueia.
+      final pending = _state.messages
+          .where((m) => m.id == pendingId)
+          .cast<ChatMessage?>()
+          .firstOrNull;
       // Remove o bubble local e insere a mensagem real (dedup por id — o
       // echo do servidor pode já ter chegado via stream, spec §51).
       final messages = List<ChatMessage>.of(_state.messages)
         ..removeWhere((m) => m.id == pendingId);
       _emit(_state.copyWith(messages: messages));
       _upsert(_juggle.mapMessage(result.message!));
+      _reportSentEvent(pending, result.message!);
       return;
     }
     final idx = _state.messages.indexWhere((m) => m.id == pendingId);
@@ -383,6 +425,31 @@ class ChatController {
     _emit(_state.copyWith(replyTarget: reply));
   }
 
+  /// Report app-side de mensagem enviada (push §19) — fire-and-forget.
+  ///
+  /// Só conversas de GRUPO (comunidade) reportam: o backend resolve a
+  /// comunidade pelo community_uuid. Falha do report NUNCA afeta o chat.
+  void _reportSentEvent(ChatMessage? pending, Message sent) {
+    final reporter = _pushReporter;
+    if (reporter == null) return;
+    if (conversationType != ConversationType.group) return;
+    final report = ChatMessageSentReport.fromSend(
+      communityConversationId: conversationId,
+      finalMessageId: sent.messageId,
+      text: pending?.text ?? '',
+      replyTo: pending?.replyTo,
+    );
+    if (report.communityUuid.isEmpty || report.messageId.isEmpty) return;
+    // ignore: unawaited_futures
+    reporter.reportMessageSent(
+      communityUuid: report.communityUuid,
+      messageId: report.messageId,
+      text: report.text,
+      replyToMessageId: report.replyToMessageId,
+      replyToSenderId: report.replyToSenderId,
+    );
+  }
+
   void _emit(ChatState next, {bool notify = true}) {
     _state = next;
     if (notify && !_stateController.isClosed) {
@@ -399,14 +466,22 @@ class ChatController {
 
 /// Provider factory: cria o controller de uma conversa (family por id).
 final chatControllerProvider =
-    Provider.family<ChatController, ({String conversationId, int conversationType})>(
-        (ref, params) {
-  final controller = ChatController(
-    juggle: ref.watch(juggleImServiceProvider),
-    chatSession: ref.watch(chatSessionServiceProvider),
-    conversationId: params.conversationId,
-    conversationType: params.conversationType,
-  );
-  ref.onDispose(controller.dispose);
-  return controller;
+    Provider.family<
+      ChatController,
+      ({String conversationId, int conversationType})
+    >((ref, params) {
+      final controller = ChatController(
+        juggle: ref.watch(juggleImServiceProvider),
+        chatSession: ref.watch(chatSessionServiceProvider),
+        conversationId: params.conversationId,
+        conversationType: params.conversationType,
+        pushReporter: ref.watch(chatPushReporterProvider),
+      );
+      ref.onDispose(controller.dispose);
+      return controller;
+    });
+
+/// Report app-side de mensagens enviadas (push §19) — fire-and-forget.
+final chatPushReporterProvider = Provider<ChatPushReporter>((ref) {
+  return ChatPushReporter(apiClient: ref.watch(apiClientProvider));
 });
