@@ -6,7 +6,9 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../shared/models/chat.dart';
@@ -83,12 +85,23 @@ class ChatController {
   ChatState get current => _state;
 
   /// Inicia: conecta (se preciso), carrega a 1ª página, assina realtime.
+  ///
+  /// Ownership: `message.senderId == sessionUserId` (Juggle ID autoritativo).
+  /// A sessão é SEMPRE verificada contra o usuário autenticado: obtainSession
+  /// devolve a sessão do token atual; se o userId da sessão em cache for de
+  /// OUTRA conta (troca de usuário sem reinício), reseta e reconecta — nunca
+  /// reutiliza a identidade do usuário anterior.
   Future<void> start() async {
     _subscribeRealtime();
-    if (_juggle.session == null ||
+    final fresh = await _chatSession.obtainSession();
+    final cached = _juggle.session;
+    if (cached == null ||
+        cached.userId != fresh.userId ||
         _juggle.state != JuggleConnectionState.connected) {
-      final session = await _chatSession.obtainSession();
-      await _juggle.initializeAndConnect(session);
+      if (cached != null && cached.userId != fresh.userId) {
+        await _juggle.resetSession(); // descarta identidade da conta anterior
+      }
+      await _juggle.initializeAndConnect(fresh);
     }
     await _juggle.markConversationRead(conversationId, conversationType);
     await loadOlder(reset: true);
