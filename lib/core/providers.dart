@@ -7,6 +7,8 @@ import 'auth/auth_service.dart';
 import 'config/app_config.dart';
 import 'network/api_client.dart';
 import 'storage/secure_storage.dart';
+import '../services/push_notification_service.dart';
+import '../services/push_registration_service.dart';
 
 /// Resolved app configuration (env-aware via dart-define).
 final appConfigProvider = Provider<AppConfig>((ref) => AppConfig.current);
@@ -35,4 +37,19 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     config: ref.watch(appConfigProvider),
     auth: ref.watch(authServiceProvider),
   );
+});
+
+/// Registro de device push contra a Wellness API (firewall-agnóstico).
+final pushRegistrationServiceProvider = Provider<PushRegistrationService>((ref) {
+  return PushRegistrationService(apiClient: ref.watch(apiClientProvider));
+});
+
+/// Ciclo de vida de push (permissão, tokens, registro, logout, deep-links).
+final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
+  final service = PushNotificationService(
+    gateway: FirebaseMessagingGateway(),
+    registration: ref.watch(pushRegistrationServiceProvider),
+  );
+  ref.onDispose(service.dispose);
+  return service;
 });

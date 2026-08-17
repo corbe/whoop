@@ -14,17 +14,27 @@ class PushRegistrationService {
   static const String _base = '/wellness/devices/push';
 
   /// POST /wellness/devices/push/ — idempotente (UNIQUE person+token).
-  /// Retorna o device uuid para uso em logout/disable.
+  /// Contrato (wellness.push_views.PushDeviceView): {token, platform,
+  /// app_id, device_identifier} → 201 {id, enabled}.
+  /// Retorna o device uuid (campo `id` da resposta) para uso em logout/disable.
   Future<String> register({
     required String token,
     required String platform, // 'android' | 'ios'
+    String appId = '',
+    String deviceIdentifier = '',
   }) async {
     final res = await _api.post(
       '$_base/',
-      body: {'token': token, 'platform': platform},
+      body: {
+        'token': token,
+        'platform': platform,
+        if (appId.isNotEmpty) 'app_id': appId,
+        if (deviceIdentifier.isNotEmpty) 'device_identifier': deviceIdentifier,
+      },
     );
     final data = res.data as Map<String, dynamic>;
-    return (data['uuid'] ?? data['device'] ?? '').toString();
+    // Backend devolve {"id": "<uuid>", "enabled": bool}.
+    return (data['id'] ?? data['uuid'] ?? data['device'] ?? '').toString();
   }
 
   /// DELETE /wellness/devices/push/{id}/ — desassocia o token (logout/switch).
