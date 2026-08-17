@@ -452,11 +452,13 @@ class _MessageBubble extends StatelessWidget {
         // menu de ações — um único caminho para toque e mouse.
         onSecondaryTapDown: (_) => _showActions(context),
         child: Align(
-          alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+          // Apresentação (fix 2026-08-17): minha → ESQUERDA, outro → DIREITA.
+          // `isMine` (ownership por senderId == Juggle user id) NÃO muda.
+          alignment: isMine ? Alignment.centerLeft : Alignment.centerRight,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment:
-                isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+                isMine ? MainAxisAlignment.start : MainAxisAlignment.end,
             children: [
               if (isMine) _actionsButton(context, mine: true),
               Flexible(

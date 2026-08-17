@@ -43,6 +43,8 @@ ChatMessage _msg({
   String senderName = '',
   String text = '',
   ChatReplyRef? replyTo,
+  ChatMessageStatus deliveryStatus = ChatMessageStatus.sent,
+  bool localPending = false,
 }) {
   return ChatMessage(
     id: id,
@@ -53,6 +55,8 @@ ChatMessage _msg({
     type: ChatMessageType.text,
     text: text,
     replyTo: replyTo,
+    deliveryStatus: deliveryStatus,
+    localPending: localPending,
     createdAt: DateTime(2026, 8, 16, 10, 0),
   );
 }
@@ -64,9 +68,12 @@ class _FakeJuggleImService extends JuggleImService {
 
   List<ChatMessage> history = [];
 
+  /// Identidade do usuário "logado" — mutável para o teste de troca A→B.
+  String sessionUserId = 'wellness:person-1';
+
   @override
-  ChatSession? get session => const ChatSession(
-        userId: 'wellness:person-1',
+  ChatSession? get session => ChatSession(
+        userId: sessionUserId,
         token: 't',
         wsUrl: 'wss://x',
         apiUrl: 'https://x',
@@ -283,20 +290,136 @@ void main() {
     expect(find.textContaining('person-1'), findsNothing);
   });
 
-  testWidgets('own message is RIGHT aligned; other messages LEFT',
+  testWidgets('layout invertido: minha mensagem LEFT, outro usuário RIGHT',
       (tester) async {
     await tester.pumpWidget(_app(fake));
     await tester.pumpAndSettle();
 
     expect(
       bubbleAlignment(tester, find.text('Minha mensagem')),
+      Alignment.centerLeft,
+      reason: 'mensagem do usuário atual deve estar à ESQUERDA (fix visual)',
+    );
+    expect(
+      bubbleAlignment(tester, find.text('Olá pessoal!').first),
       Alignment.centerRight,
-      reason: 'mensagem do usuário atual deve estar à direita',
+      reason: 'mensagem de outro usuário deve estar à DIREITA (fix visual)',
+    );
+  });
+
+  testWidgets('A) minha mensagem do histórico → LEFT', (tester) async {
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+    expect(
+      bubbleAlignment(tester, find.text('Minha mensagem')),
+      Alignment.centerLeft,
+    );
+  });
+
+  testWidgets('B) mensagem histórica de outro usuário → RIGHT', (tester) async {
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+    expect(
+      bubbleAlignment(tester, find.text('Olá pessoal!').first),
+      Alignment.centerRight,
+    );
+  });
+
+  testWidgets('C) minha mensagem PENDING → LEFT', (tester) async {
+    fake.history = [
+      _msg(
+        id: 'p1',
+        senderId: 'wellness:person-1',
+        text: 'Enviando…',
+        deliveryStatus: ChatMessageStatus.sending,
+        localPending: true,
+      ),
+    ];
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+    expect(
+      bubbleAlignment(tester, find.text('Enviando…')),
+      Alignment.centerLeft,
+    );
+    expect(find.text('enviando…'), findsOneWidget);
+  });
+
+  testWidgets('D) minha mensagem após ACK/finalId → continua LEFT',
+      (tester) async {
+    fake.history = [
+      _msg(
+        id: 'a1',
+        senderId: 'wellness:person-1',
+        text: 'Confirmada pelo servidor',
+      ),
+    ];
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+    expect(
+      bubbleAlignment(tester, find.text('Confirmada pelo servidor')),
+      Alignment.centerLeft,
+    );
+  });
+
+  testWidgets('E) minha mensagem com erro/retry → LEFT + botão Tentar',
+      (tester) async {
+    fake.history = [
+      _msg(
+        id: 'e1',
+        senderId: 'wellness:person-1',
+        text: 'Falhou no envio',
+        deliveryStatus: ChatMessageStatus.failed,
+      ),
+    ];
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+    expect(
+      bubbleAlignment(tester, find.text('Falhou no envio')),
+      Alignment.centerLeft,
+    );
+    expect(find.text('Tentar'), findsOneWidget);
+  });
+
+  testWidgets('F) mensagem de outro usuário (com reply) → RIGHT', (tester) async {
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+    expect(
+      bubbleAlignment(tester, find.text('Bora treinar hoje?')),
+      Alignment.centerRight,
+      reason: 'reply de outro usuário também fica à direita',
+    );
+  });
+
+  testWidgets('G) troca A→B: layout invertido, NÃO a identidade',
+      (tester) async {
+    // A logado (wellness:person-1): A → LEFT, B → RIGHT.
+    fake.sessionUserId = 'wellness:person-1';
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+    expect(
+      bubbleAlignment(tester, find.text('Minha mensagem')),
+      Alignment.centerLeft,
+      reason: 'A logado: mensagem de A à esquerda',
+    );
+    expect(
+      bubbleAlignment(tester, find.text('Olá pessoal!').first),
+      Alignment.centerRight,
+      reason: 'A logado: mensagem de B à direita',
+    );
+
+    // B logado (wellness:other-1): A → RIGHT, B → LEFT.
+    fake.sessionUserId = 'wellness:other-1';
+    await tester.pumpWidget(_app(fake));
+    await tester.pumpAndSettle();
+    expect(
+      bubbleAlignment(tester, find.text('Minha mensagem')),
+      Alignment.centerRight,
+      reason: 'B logado: mensagem de A à direita (mesmo senderId, outro dono)',
     );
     expect(
       bubbleAlignment(tester, find.text('Olá pessoal!').first),
       Alignment.centerLeft,
-      reason: 'mensagem de outro usuário deve estar à esquerda',
+      reason: 'B logado: mensagem de B à esquerda',
     );
   });
 
