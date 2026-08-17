@@ -46,9 +46,9 @@ class SendResult {
 }
 
 class JuggleImService {
-  JuggleImService();
+  JuggleImService({JuggleIm? sdk}) : _sdk = sdk ?? JuggleIm.instance;
 
-  final JuggleIm _sdk = JuggleIm.instance;
+  final JuggleIm _sdk;
 
   final _statusController =
       StreamController<JuggleConnectionState>.broadcast();
@@ -173,6 +173,34 @@ class JuggleImService {
     _setState(JuggleConnectionState.disconnected);
   }
 
+  /// Aguarda a conexão WS ficar PRONTA antes de enviar (fix 2026-08-17:
+  /// send × connect race). O SDK enfileira mensagens durante um connect em
+  /// andamento, mas o timeout de ack do app (15s) estourava antes do connect
+  /// lento terminar (emulador Android: ~25s na 1ª conexão) → falha falsa
+  /// errorCode=-1. Este gate espera o estado `connected` (bounded) e só então
+  /// o envio é disparado — o ack chega em <1s com a conexão de pé.
+  ///
+  /// Retorna true se já conectado ou conectou dentro do bound; false em
+  /// timeout ou falha de conexão (o chamador decide: falha imediata).
+  Future<bool> waitUntilConnected({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    if (_state == JuggleConnectionState.connected) return true;
+    final completer = Completer<bool>();
+    late final StreamSubscription<JuggleConnectionState> sub;
+    sub = statusStream.listen((s) {
+      if (completer.isCompleted) return;
+      if (s == JuggleConnectionState.connected) {
+        completer.complete(true);
+      } else if (s == JuggleConnectionState.failed) {
+        completer.complete(false);
+      }
+    });
+    final ok = await completer.future.timeout(timeout, onTimeout: () => false);
+    await sub.cancel();
+    return ok;
+  }
+
   // ── mapeamento SDK → domínio (spec §5) ─────────────────────────────
 
   /// Converte uma Message do SDK em ChatMessage de domínio.
@@ -270,7 +298,15 @@ class JuggleImService {
     int conversationType,
     String text, {
     ChatReplyRef? replyTo,
-  }) {
+  }) async {
+    // Sequenciamento (fix 2026-08-17): NUNCA dispara o envio enquanto a
+    // conexão não está pronta — o SDK enfileiraria e o timeout de ack (15s)
+    // poderia estourar durante um connect lento (emulador: ~25s) → -1 falso.
+    // Espera bounded; se a conexão não vier, falha imediato (UI mostra
+    // "Falhou · Tentar novamente" — retry re-tenta com o gate de novo).
+    if (!await waitUntilConnected()) {
+      return const SendResult(ok: false, errorCode: -1);
+    }
     final completer = Completer<SendResult>();
     final message = TextMessage.content(text);
     final conversation = Conversation(conversationType, conversationId);
@@ -298,7 +334,13 @@ class JuggleImService {
     int conversationType,
     String localPath, {
     void Function(int progress)? onProgress,
-  }) {
+  }) async {
+    // Mesmo gate de sequenciamento do sendText (fix 2026-08-17): o upload
+    // também depende do WS (getUploadFileCred + publish) — enviar durante um
+    // connect lento estourava o timeout com -1 falso.
+    if (!await waitUntilConnected()) {
+      return const SendResult(ok: false, errorCode: -1);
+    }
     final completer = Completer<SendResult>();
     final message = ImageMessage()
       ..localPath = localPath
@@ -335,7 +377,10 @@ class JuggleImService {
     required String mimeType,
     required int size,
     void Function(int progress)? onProgress,
-  }) {
+  }) async {
+    if (!await waitUntilConnected()) {
+      return const SendResult(ok: false, errorCode: -1);
+    }
     final completer = Completer<SendResult>();
     final message = FileMessage()
       ..localPath = localPath
