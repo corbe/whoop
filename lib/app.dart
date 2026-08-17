@@ -34,26 +34,43 @@ class _NoanaWellnessAppState extends ConsumerState<NoanaWellnessApp> {
     // Restore the persisted session (idempotent; safe to call once here).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = ref.read(authServiceProvider);
-      // Reset completo do estado de chat/Juggle na troca de conta: os
-      // providers são keepAlive e reteriam a sessão do usuário anterior
-      // (mensagens do lado errado após logout/login — ver BUG ownership).
+      final push = ref.read(pushNotificationServiceProvider);
+      _push = push;
+
+      // Um ÚNICO listener de auth cobre os dois efeitos colaterais:
+      // (1) troca de conta → reset do estado de chat/Juggle (providers
+      //     keepAlive reteriam a sessão do usuário anterior); e
+      // (2) push → registro do device no login / desassociação no logout.
+      // ATENÇÃO (bug 2026-08-17): antes, o listener de push era registrado
+      // com `_authSub ??=` DEPOIS de `_authSub` já atribuído ao listener de
+      // chat — nunca era anexado, e onAuthenticated()/onLoggedOut() nunca
+      // rodavam (nenhum DeviceFront era criado no backend).
       _authSub = auth.statusStream.listen((status) {
-        if (status == AuthStatus.unauthenticated) {
+        if (status == AuthStatus.authenticated) {
+          push.onAuthenticated();
+        } else if (status == AuthStatus.unauthenticated) {
           ref.invalidate(chatControllerProvider);
           ref.invalidate(juggleImServiceProvider);
+          push.onLoggedOut();
         }
       });
 
-      _setupPush(auth);
+      // statusStream é broadcast (NÃO re-emite o estado atual a quem dá
+      // listen): se a autenticação já tiver ocorrido antes do listener (ex.:
+      // restore concluído muito cedo ou reordenação futura do boot), garante
+      // o registro mesmo assim. Idempotente no backend (upsert por token).
+      if (auth.status == AuthStatus.authenticated) {
+        push.onAuthenticated();
+      }
+
+      _setupPush(auth, push);
       auth.initialize();
     });
   }
 
   /// Push: init único + registro no login + desassociação no logout +
   /// deep-links (opened/terminated) com gate de readiness (cold-start).
-  void _setupPush(AuthService auth) {
-    final push = ref.read(pushNotificationServiceProvider);
-    _push = push;
+  void _setupPush(AuthService auth, PushNotificationService push) {
     final router = ref.read(routerProvider);
 
     // Gate de sessão: espera o restore (idempotente — initialize já roda no
@@ -85,16 +102,6 @@ class _NoanaWellnessAppState extends ConsumerState<NoanaWellnessApp> {
       await _deepLinkRouter?.handle(link);
     };
     push.init();
-
-    // Registro/desassociação seguem o status de autenticação (JWT no backend
-    // define a associação do device — troca de conta nunca vaza notificação).
-    _authSub ??= auth.statusStream.listen((status) {
-      if (status == AuthStatus.authenticated) {
-        push.onAuthenticated();
-      } else if (status == AuthStatus.unauthenticated) {
-        push.onLoggedOut();
-      }
-    });
   }
 
   /// Mapeia o deep link para a rota go_router existente (spec push §17).
