@@ -116,9 +116,11 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
       if (attachment == null) return;
       await _controller.sendImage(attachment.localPath);
     } catch (e) {
+      debugPrint('[chat] pickImage error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
+          const SnackBar(
+              content: Text('Não foi possível enviar a foto. Tente novamente.')),
         );
       }
     }
@@ -271,7 +273,16 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
               await _controller.addReaction(message.id, emoji);
             }
           },
-          onRetry: () => _controller.retryFailed(message),
+          onRetry: () async {
+            final ok = await _controller.retryFailed(message);
+            if (!ok && mounted && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content:
+                        Text('Não foi possível reenviar. Selecione a foto novamente.')),
+              );
+            }
+          },
           onScrollToBottom: () => _atBottom = true,
           onScrollAway: () => _atBottom = false,
           onTapReplyPreview: message.replyTo == null

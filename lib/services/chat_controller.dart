@@ -264,6 +264,10 @@ class ChatController {
   Future<SendResult> sendImage(String localPath,
       {void Function(int)? onProgress}) async {
     final pendingId = 'local-${DateTime.now().microsecondsSinceEpoch}';
+    final fileExists = File(localPath).existsSync();
+    debugPrint('[chat] sendImage pending=$pendingId path=$localPath '
+        'exists=$fileExists size=${fileExists ? File(localPath).lengthSync() : 0} '
+        'sessionUserId=${_juggle.session?.userId}');
     _upsert(_pending(
       pendingId,
       '',
@@ -308,6 +312,9 @@ class ChatController {
   }
 
   void _finalizeSend(String pendingId, SendResult result) {
+    debugPrint('[chat] _finalizeSend pending=$pendingId ok=${result.ok} '
+        'errorCode=${result.errorCode} finalId=${result.message?.messageId} '
+        'finalSender=${result.message?.senderUserId}');
     if (result.ok && result.message != null) {
       // Remove o bubble local e insere a mensagem real (dedup por id — o
       // echo do servidor pode já ter chegado via stream, spec §51).
@@ -327,8 +334,11 @@ class ChatController {
     _emit(_state.copyWith(messages: messages));
   }
 
-  /// Retry de mensagem falha (spec §49/§64) — reenvia o texto.
-  Future<void> retryFailed(ChatMessage message) async {
+  /// Retry de mensagem falha (spec §49/§64). Texto reenvia o texto; imagem
+  /// reenvia o MESMO arquivo local se ainda existir (sem duplicar upload).
+  /// Retorna false quando não é possível reenviar (arquivo removido) para a
+  /// UI pedir nova seleção.
+  Future<bool> retryFailed(ChatMessage message) async {
     if (message.type == ChatMessageType.text) {
       final result = await _juggle.sendText(
         conversationId,
@@ -337,7 +347,22 @@ class ChatController {
         replyTo: message.replyTo,
       );
       _finalizeSend(message.id, result);
+      return result.ok;
     }
+    if (message.type == ChatMessageType.image) {
+      final local = message.attachments.isNotEmpty
+          ? message.attachments.first.localPath
+          : null;
+      if (local == null || !File(local).existsSync()) return false;
+      final result = await _juggle.sendImage(
+        conversationId,
+        conversationType,
+        local,
+      );
+      _finalizeSend(message.id, result);
+      return result.ok;
+    }
+    return false;
   }
 
   // ── reações / read ─────────────────────────────────────────────────
