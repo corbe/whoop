@@ -106,6 +106,20 @@ class JuggleImService {
     await _sdk.connect(session.token);
   }
 
+  /// Reseta a sessão Juggle (logout / troca de conta): desconecta o SDK,
+  /// limpa a sessão e o estado — a próxima abertura de chat obtém uma
+  /// sessão NOVA para o usuário autenticado. Nunca mantém o userId do
+  /// usuário anterior (ownership errado após troca de conta).
+  Future<void> resetSession() async {
+    try {
+      await _sdk.disconnect(false);
+    } catch (_) {
+      // SDK já pode estar desconectado; reset é best-effort.
+    }
+    _session = null;
+    _setState(JuggleConnectionState.disconnected);
+  }
+
   String _appKeyFromSession(ChatSession session) => 'noana-hml';
 
   void _configureListeners() {
@@ -442,6 +456,14 @@ class JuggleImService {
   }
 
   void dispose() {
+    if (_session != null) {
+      // Só desconecta se houve sessão (evita MethodChannel em testes sem binding).
+      try {
+        _sdk.disconnect(false);
+      } catch (_) {
+        // best-effort — dispose pode ocorrer com SDK já desconectado.
+      }
+    }
     _sdk.removeConnectionListener('wellness');
     _statusController.close();
     _messageController.close();
