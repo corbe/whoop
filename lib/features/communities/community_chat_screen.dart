@@ -106,8 +106,16 @@ class _CommunityChatScreenState extends ConsumerState<CommunityChatScreen> {
   Future<void> _send() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
-    await _controller.sendText(text);
-    _messageController.clear();
+    final result = await _controller.sendText(text);
+    // O await acima pode durar ~15-30s (timeout/connect) — o usuário pode
+    // navegar (back/tab) nesse intervalo e o State é descartado. NUNCA tocar
+    // o controller (nem setState) depois do dispose.
+    if (!mounted) return;
+    // Limpa SÓ no sucesso: em falha o texto digitado é preservado no composer
+    // (o bubble falho com "Tentar novamente" também permanece na lista).
+    if (result.ok) {
+      _messageController.clear();
+    }
   }
 
   Future<void> _sendImage() async {
