@@ -1,0 +1,65 @@
+# Phase A historical replay — bounded cohort, one-shot Job (not a CronJob,
+# not a long-running service). Operator supplies the cohort Secret.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wellness-shadow-historical
+  labels:
+    app: wellness-shadow-historical
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 604800
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: shadow
+          image: noana-hml/wellness-engine:dev
+          command: ["/usr/local/bin/wellness-shadow"]
+          args:
+            - --cohort-file=/etc/wellness-shadow/cohort.json
+            - --from=$(FROM_DAY)
+            - --to=$(TO_DAY)
+            - --api-base-url=$(HML_API_BASE)
+            - --api-token=$(HML_API_TOKEN)
+            - --db-url=$(DATABASE_URL)
+          env:
+            - name: FROM_DAY
+              value: "2026-08-01" # operator overrides
+            - name: TO_DAY
+              value: "2026-08-07"
+            - name: HML_API_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: wellness-engine-secrets
+                  key: HML_API_BASE
+            - name: HML_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: wellness-engine-secrets
+                  key: HML_API_TOKEN
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: wellness-engine-secrets
+                  key: DATABASE_URL
+            - name: TZ
+              value: America/Sao_Paulo
+          volumeMounts:
+            - name: cohort
+              mountPath: /etc/wellness-shadow
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: cohort
+          secret:
+            secretName: wellness-shadow-cohort

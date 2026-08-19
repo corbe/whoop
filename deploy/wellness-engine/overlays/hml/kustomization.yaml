@@ -1,0 +1,11 @@
+# HML overlay — namespace + image tag, following the noana-k8s convention
+# (base + overlay). Secrets (wellness-engine-secrets, wellness-shadow-cohort)
+# are operator-created (sealed secrets in noana-k8s); never committed.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: noana-hml
+resources:
+  - ../../base
+images:
+  - name: noana-hml/wellness-engine
+    newTag: hml

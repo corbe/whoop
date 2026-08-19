@@ -1,0 +1,27 @@
+{
+  "person_id": "u1",
+  "date": "2026-08-10",
+  "timezone": "America/Sao_Paulo",
+  "segments": [
+    {"start_ms": 1786328760000, "end_ms": 1786331040000, "stage": -3},
+    {"start_ms": 1786331040000, "end_ms": 1786333320000, "stage": -1},
+    {"start_ms": 1786333320000, "end_ms": 1786339080000, "stage": -4},
+    {"start_ms": 1786339080000, "end_ms": 1786357560000, "stage": -3}
+  ],
+  "daily_hrv_averages_ms": [
+    49.575, 48.6175, 47.66, 46.7025, 45.745, 44.7875, 43.83,
+    42.8725, 41.915, 40.9575, 40.0, 39.0425, 38.085, 37.1275,
+    36.17, 35.2125, 34.255, 33.2975, 32.34, 31.3825, 30.425
+  ],
+  "sleep_history_scores": [85, 70, 0, 80],
+  "fatigue_history_scores": [85, 70, 80],
+  "last_night_rhr_bpm": 62.0,
+  "rhr_baseline_bpm": 64.67,
+  "spo2_tonight_pct": 95.2,
+  "spo2_baseline_pct": 96.07,
+  "steps": [
+    {"value": 4200, "calories": 168, "distance_m": 3360, "timestamp_ms": 1786374000000, "device": "BRACELET"}
+  ],
+  "session_kcal": 50,
+  "goal_steps": 7000
+}

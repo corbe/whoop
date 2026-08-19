@@ -1,0 +1,16 @@
+.git
+.gitignore
+docs/
+testdata/
+wellness-diff-out/
+*.report.json
+*.env
+.env
+.env.*
+*.pem
+*.key
+*.dump
+.idea/
+.vscode/
+*.iml
+.DS_Store

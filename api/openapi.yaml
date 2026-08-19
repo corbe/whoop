@@ -1,0 +1,405 @@
+openapi: 3.0.3
+info:
+  title: RITMA Wellness Engine API
+  version: "1.0.0"
+  description: >-
+    Deterministic wellness scores (sleep/stress/readiness/activity) with full
+    reproducibility metadata. Implements docs/wellness-api-design.md (STAGE 16).
+    Formula administration lives under /internal/* and is never public.
+security:
+  - subjectHeader: []
+servers:
+  - url: https://api.ritma.example/v1
+paths:
+  /wellness/days/{date}/calculate:
+    post:
+      operationId: calculateDay
+      summary: Calculate and persist one person-day (201 new / 200 idempotent replay)
+      parameters:
+        - $ref: "#/components/parameters/Date"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalculateRequest"
+      responses:
+        "201":
+          description: New calculation revision persisted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalculateResponse"
+        "200":
+          description: Idempotent replay of an identical semantic calculation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalculateResponse"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /wellness/days/{date}/scores:
+    get:
+      operationId: getDailyScores
+      summary: Current scores for the day
+      parameters:
+        - $ref: "#/components/parameters/Date"
+      responses:
+        "200":
+          description: Current scores (per formula; absent when no current row)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoresResponse"
+        "404": { $ref: "#/components/responses/NotFound" }
+  /wellness/days/{date}/scores/{formula}:
+    get:
+      operationId: getScoreDetail
+      summary: Score + machine-readable explanation
+      parameters:
+        - $ref: "#/components/parameters/Date"
+        - $ref: "#/components/parameters/Formula"
+      responses:
+        "200":
+          description: Score detail with explanation payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetailResponse"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /wellness/days/{date}/scores/{formula}/history:
+    get:
+      operationId: getScoreHistory
+      summary: All score revisions, newest first
+      parameters:
+        - $ref: "#/components/parameters/Date"
+        - $ref: "#/components/parameters/Formula"
+      responses:
+        "200":
+          description: Revisions with run metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryResponse"
+  /wellness/goals/current:
+    get:
+      operationId: getCurrentGoals
+      summary: Current adaptive goals (goal_steps / goal_sleep)
+      responses:
+        "200":
+          description: Current goals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalsCurrentResponse"
+  /wellness/goals/history/{goal}:
+    get:
+      operationId: getGoalHistory
+      summary: Goal change history, newest first
+      parameters:
+        - name: goal
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [goal_steps, goal_sleep]
+      responses:
+        "200":
+          description: Goal history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalsHistoryResponse"
+  /wellness/baseline/current:
+    get:
+      operationId: getCurrentBaseline
+      summary: Newest baseline snapshot (no raw physiological samples)
+      responses:
+        "200":
+          description: Baseline snapshot metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaselineResponse"
+        "404": { $ref: "#/components/responses/NotFound" }
+  /health:
+    get:
+      operationId: health
+      summary: Liveness
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /ready:
+    get:
+      operationId: ready
+      summary: Readiness incl. persistence probe
+      responses:
+        "200":
+          description: ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+        "503":
+          description: persistence unavailable
+components:
+  securitySchemes:
+    subjectHeader:
+      type: apiKey
+      in: header
+      name: X-Auth-Subject
+      description: Test/development resolver; production replaces with real auth (fails closed).
+  parameters:
+    Date:
+      name: date
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        description: Logical day YYYY-MM-DD (never derived from server timezone)
+    Formula:
+      name: formula
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [sleep, stress, readiness, activity]
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+    Forbidden:
+      description: Access denied (cross-person or internal route without token)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+    NotFound:
+      description: Not found / no data
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+  schemas:
+    CalculateRequest:
+      type: object
+      properties:
+        person_id: { type: string, description: "Must match the authenticated subject" }
+        input:
+          $ref: "#/components/schemas/RawInput"
+    RawInput:
+      type: object
+      description: Stateless mode B input (same fields as the CLI day JSON)
+      properties:
+        timezone: { type: string }
+        segments:
+          type: array
+          items:
+            type: object
+            properties:
+              start_ms: { type: integer, format: int64 }
+              end_ms: { type: integer, format: int64 }
+              stage: { type: integer }
+        daily_hrv_averages_ms: { type: array, items: { type: number } }
+        sleep_history_scores: { type: array, items: { type: integer } }
+        fatigue_history_scores: { type: array, items: { type: integer } }
+        last_night_rhr_bpm: { type: number, nullable: true }
+        rhr_baseline_bpm: { type: number, nullable: true }
+        spo2_tonight_pct: { type: number, nullable: true }
+        spo2_baseline_pct: { type: number, nullable: true }
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              value: { type: number }
+              calories: { type: number }
+              distance_m: { type: number }
+              timestamp: { type: integer, format: int64 }
+              device: { type: string }
+        session_kcal: { type: integer }
+        goal_steps: { type: integer }
+        goal_step_samples_d1_d30: { type: array, items: { type: integer } }
+        goal_prior_steps: { type: integer }
+        goal_max_daily_steps: { type: integer }
+        goal_current_steps: { type: integer }
+        goal_last_auto_update_at_ms: { type: integer, format: int64 }
+        now_ms: { type: integer, format: int64 }
+    CalculateResponse:
+      type: object
+      properties:
+        person_id: { type: string }
+        date: { type: string }
+        timezone: { type: string }
+        replay: { type: boolean }
+        run_id: { type: integer, format: int64 }
+        replaces_run_id: { type: integer, format: int64, nullable: true }
+        input_fingerprint: { type: string }
+        config_hash: { type: string }
+        engine_version: { type: string }
+        scores:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              score: { type: integer }
+              formula_version: { type: integer }
+        goal_updates:
+          type: array
+          items:
+            type: object
+            properties:
+              goal_key: { type: string }
+              value: { type: integer }
+              reason: { type: string }
+              source: { type: string }
+        quality:
+          $ref: "#/components/schemas/Quality"
+    Quality:
+      type: object
+      properties:
+        warnings: { type: array, items: { type: string } }
+        missing: { type: array, items: { type: string } }
+    ScoresResponse:
+      type: object
+      properties:
+        person_id: { type: string }
+        date: { type: string }
+        scores:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ScoreDTO"
+    ScoreDTO:
+      type: object
+      properties:
+        run_id: { type: integer, format: int64 }
+        score: { type: integer }
+        formula_version: { type: integer }
+        config_hash: { type: string }
+        engine_version: { type: string }
+        calculated_at: { type: string, format: date-time }
+        is_current: { type: boolean }
+    DetailResponse:
+      type: object
+      properties:
+        person_id: { type: string }
+        date: { type: string }
+        run_id: { type: integer, format: int64 }
+        explanation:
+          type: object
+          properties:
+            score: { type: integer }
+            formula_key: { type: string }
+            formula_version: { type: integer }
+            config_hash: { type: string }
+            engine_version: { type: string }
+            calculated_at: { type: string, format: date-time }
+            components:
+              type: array
+              items:
+                type: object
+                properties:
+                  key: { type: string }
+                  raw_value: { type: number, nullable: true }
+                  baseline_value: { type: number, nullable: true }
+                  normalized_value: { type: integer }
+                  weight: { type: number }
+                  contribution: { type: number }
+            steps:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  value: { type: number }
+            warnings:
+              type: array
+              items:
+                type: object
+                properties:
+                  code: { type: string }
+                  message: { type: string }
+            missing: { type: array, items: { type: string } }
+    HistoryResponse:
+      type: object
+      properties:
+        person_id: { type: string }
+        date: { type: string }
+        formula: { type: string }
+        revisions:
+          type: array
+          items:
+            type: object
+            properties:
+              run_id: { type: integer, format: int64 }
+              score: { type: integer }
+              formula_version: { type: integer }
+              config_hash: { type: string }
+              input_fingerprint: { type: string }
+              engine_version: { type: string }
+              calculated_at: { type: string, format: date-time }
+              is_current: { type: boolean }
+              replaces_run_id: { type: integer, format: int64, nullable: true }
+    GoalsCurrentResponse:
+      type: object
+      properties:
+        person_id: { type: string }
+        goals:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/GoalDTO"
+    GoalsHistoryResponse:
+      type: object
+      properties:
+        person_id: { type: string }
+        goal_key: { type: string }
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoalDTO"
+    GoalDTO:
+      type: object
+      properties:
+        goal_key: { type: string }
+        value: { type: integer }
+        bed_time_minutes: { type: integer, nullable: true }
+        reason: { type: string }
+        source: { type: string }
+        formula_key: { type: string }
+        config_hash: { type: string }
+        applied_at: { type: string, format: date-time }
+    BaselineResponse:
+      type: object
+      properties:
+        person_id: { type: string }
+        logical_day: { type: string }
+        run_id: { type: integer, format: int64 }
+        metrics: { type: object }
+    HealthResponse:
+      type: object
+      properties:
+        status: { type: string, enum: [ok] }
+        engine_version: { type: string }
+    ReadyResponse:
+      type: object
+      properties:
+        status: { type: string }
+        persistence: { type: string, enum: [ok, unavailable] }
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, nullable: true }
+  # Internal namespace (never public): documented for operators only.
+  # GET /internal/v1/formulas — requires X-Internal-Token; returns the active
+  # formula registry. No mutation endpoints exposed yet (STAGE 16 design).

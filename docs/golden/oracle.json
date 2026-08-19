@@ -1,0 +1,585 @@
+{
+  "sleep_sleep_ideal": {
+    "input": {
+      "bedTimeMinutes": 1320,
+      "sleepTargetMinutes": 480,
+      "startMinuteOfDay": 1320,
+      "sleepingMinutes": 480,
+      "pctRem": 22,
+      "pctDeep": 20,
+      "pctLight": 58
+    },
+    "output": {
+      "sleepScore": 100,
+      "bateriaZerada": false,
+      "pctRem": 22.0,
+      "pctDeep": 20.0,
+      "pctLight": 57.99999999999999,
+      "sleepStartTimestamp": 1786410000000,
+      "sleepEndTimestamp": 1786357800000,
+      "sleepingMs": 28800000,
+      "sleepAnalysisMsg1": 0,
+      "sleepAnalysisMsg2": 0,
+      "sleepAnalysisMsg3": 3
+    }
+  },
+  "sleep_sleep_late_60": {
+    "input": {
+      "bedTimeMinutes": 1320,
+      "sleepTargetMinutes": 480,
+      "startMinuteOfDay": 1380,
+      "sleepingMinutes": 480,
+      "pctRem": 22,
+      "pctDeep": 20,
+      "pctLight": 58
+    },
+    "output": {
+      "sleepScore": 98,
+      "bateriaZerada": false,
+      "pctRem": 22.0,
+      "pctDeep": 20.0,
+      "pctLight": 57.99999999999999,
+      "sleepStartTimestamp": 1786413600000,
+      "sleepEndTimestamp": 1786357800000,
+      "sleepingMs": 28800000,
+      "sleepAnalysisMsg1": 1,
+      "sleepAnalysisMsg2": 0,
+      "sleepAnalysisMsg3": 3
+    }
+  },
+  "sleep_sleep_late_150": {
+    "input": {
+      "bedTimeMinutes": 1320,
+      "sleepTargetMinutes": 480,
+      "startMinuteOfDay": 1470,
+      "sleepingMinutes": 480,
+      "pctRem": 22,
+      "pctDeep": 20,
+      "pctLight": 58
+    },
+    "output": {
+      "sleepScore": 87,
+      "bateriaZerada": false,
+      "pctRem": 22.0,
+      "pctDeep": 20.0,
+      "pctLight": 57.99999999999999,
+      "sleepStartTimestamp": 1786419000000,
+      "sleepEndTimestamp": 1786357800000,
+      "sleepingMs": 28800000,
+      "sleepAnalysisMsg1": 2,
+      "sleepAnalysisMsg2": 0,
+      "sleepAnalysisMsg3": 3
+    }
+  },
+  "sleep_sleep_short_330": {
+    "input": {
+      "bedTimeMinutes": 1320,
+      "sleepTargetMinutes": 480,
+      "startMinuteOfDay": 1320,
+      "sleepingMinutes": 330,
+      "pctRem": 22,
+      "pctDeep": 20,
+      "pctLight": 58
+    },
+    "output": {
+      "sleepScore": 70,
+      "bateriaZerada": false,
+      "pctRem": 22.0,
+      "pctDeep": 20.0,
+      "pctLight": 57.99999999999999,
+      "sleepStartTimestamp": 1786410000000,
+      "sleepEndTimestamp": 1786357800000,
+      "sleepingMs": 19800000,
+      "sleepAnalysisMsg1": 0,
+      "sleepAnalysisMsg2": 4,
+      "sleepAnalysisMsg3": 3
+    }
+  },
+  "sleep_sleep_over_570": {
+    "input": {
+      "bedTimeMinutes": 1320,
+      "sleepTargetMinutes": 480,
+      "startMinuteOfDay": 1320,
+      "sleepingMinutes": 570,
+      "pctRem": 22,
+      "pctDeep": 20,
+      "pctLight": 58
+    },
+    "output": {
+      "sleepScore": 94,
+      "bateriaZerada": false,
+      "pctRem": 22.0,
+      "pctDeep": 20.0,
+      "pctLight": 57.99999999999999,
+      "sleepStartTimestamp": 1786410000000,
+      "sleepEndTimestamp": 1786357800000,
+      "sleepingMs": 34200000,
+      "sleepAnalysisMsg1": 0,
+      "sleepAnalysisMsg2": 1,
+      "sleepAnalysisMsg3": 3
+    }
+  },
+  "sleep_sleep_poor_quality": {
+    "input": {
+      "bedTimeMinutes": 1320,
+      "sleepTargetMinutes": 480,
+      "startMinuteOfDay": 1320,
+      "sleepingMinutes": 480,
+      "pctRem": 12,
+      "pctDeep": 8,
+      "pctLight": 80
+    },
+    "output": {
+      "sleepScore": 91,
+      "bateriaZerada": false,
+      "pctRem": 12.0,
+      "pctDeep": 8.0,
+      "pctLight": 80.0,
+      "sleepStartTimestamp": 1786410000000,
+      "sleepEndTimestamp": 1786357800000,
+      "sleepingMs": 28800000,
+      "sleepAnalysisMsg1": 0,
+      "sleepAnalysisMsg2": 0,
+      "sleepAnalysisMsg3": 0
+    }
+  },
+  "sleep_sleep_battery_depleted": {
+    "input": {
+      "bedTimeMinutes": 1320,
+      "sleepTargetMinutes": 480,
+      "startMinuteOfDay": 1320,
+      "sleepingMinutes": 480,
+      "pctRem": 22,
+      "pctDeep": 20,
+      "pctLight": 58,
+      "batteryDepleted": true
+    },
+    "output": {
+      "sleepScore": 0,
+      "bateriaZerada": true
+    }
+  },
+  "sleep_sleep_empty": {
+    "input": {
+      "bedTimeMinutes": 1320,
+      "sleepTargetMinutes": 480,
+      "empty": true
+    },
+    "output": {
+      "sleepScore": 0,
+      "bateriaZerada": false
+    }
+  },
+  "stress_healthy_21d": {
+    "input": {
+      "dailyAveragesMs": [
+        40.0,
+        41.5,
+        43.0,
+        44.5,
+        46.0,
+        47.5,
+        49.0,
+        50.5,
+        52.0,
+        53.5,
+        55.0,
+        56.5,
+        58.0,
+        59.5,
+        61.0,
+        62.5,
+        64.0,
+        65.5,
+        67.0,
+        68.5,
+        70.0
+      ]
+    },
+    "baselineMs": 55.0,
+    "baselineLnSd": 0.2,
+    "trendMs": 67.0,
+    "output": {
+      "stressScore": 21.0
+    }
+  },
+  "stress_stressed_21d": {
+    "input": {
+      "dailyAveragesMs": [
+        28.0,
+        27.6,
+        27.2,
+        26.8,
+        26.4,
+        26.0,
+        25.6,
+        25.2,
+        24.8,
+        24.4,
+        24.0,
+        23.6,
+        23.2,
+        22.8,
+        22.4,
+        22.0,
+        21.6,
+        21.2,
+        20.8,
+        20.4,
+        20.0
+      ]
+    },
+    "baselineMs": 24.0,
+    "baselineLnSd": 0.2,
+    "trendMs": 20.8,
+    "output": {
+      "stressScore": 36.0
+    }
+  },
+  "stress_insufficient_days": {
+    "input": {
+      "dailyAveragesMs": [
+        38.0,
+        42.0,
+        35.0,
+        41.0
+      ],
+      "minDaysRequired": 5
+    },
+    "note": "service returns 0 with downCount=1 for <5 days (mirrors service)",
+    "output": {
+      "stressScore": 0,
+      "downCount": 1
+    }
+  },
+  "stress_z_edge_2x": {
+    "input": {
+      "baselineMs": 40.0,
+      "observedMs": 85.0,
+      "baselineLnSd": 0.25
+    },
+    "zScore": -0.4,
+    "scoreFromZ": 24.5200171799502
+  },
+  "stress_sanitize_clamp": {
+    "input": {
+      "baselineMs": 40.0,
+      "observedMs": 100.0
+    },
+    "sanitizedMs": 62.0
+  },
+  "stress_lnsd_single_day": {
+    "input": {
+      "dailyMs": [
+        42.0
+      ]
+    },
+    "lnSd": 0.22
+  },
+  "readiness_sleep_aggregate": {
+    "input": {
+      "today": 85,
+      "historicalAvg": 70
+    },
+    "output": 81
+  },
+  "readiness_fatigue_lerp": {
+    "input": {
+      "avgSleepScores": [
+        0,
+        8,
+        20,
+        25,
+        30,
+        40,
+        50,
+        65,
+        80
+      ]
+    },
+    "output": {
+      "0": 0,
+      "8": 3,
+      "20": 8,
+      "25": 12,
+      "30": 15,
+      "40": 25,
+      "50": 38,
+      "65": 65,
+      "80": 80
+    }
+  },
+  "readiness_caps": {
+    "input": {
+      "blend": 90,
+      "todaySleepScores": [
+        10,
+        35,
+        45,
+        55,
+        70
+      ]
+    },
+    "output": {
+      "10": 35,
+      "35": 45,
+      "45": 58,
+      "55": 72,
+      "70": 90
+    }
+  },
+  "readiness_rhr": {
+    "input": {
+      "lastNightRhr": [
+        58.0,
+        65.0,
+        70.0,
+        75.0,
+        80.0
+      ],
+      "baseline": 65.0
+    },
+    "output": {
+      "58.0": 100,
+      "65.0": 100,
+      "70.0": 36,
+      "75.0": 0,
+      "80.0": 0
+    }
+  },
+  "readiness_spo2_absolute": {
+    "input": {
+      "avgPct": [
+        97.0,
+        96.0,
+        95.0,
+        93.0,
+        91.0,
+        89.0
+      ]
+    },
+    "output": {
+      "97.0": 100,
+      "96.0": 100,
+      "95.0": 60,
+      "93.0": 15,
+      "91.0": 5,
+      "89.0": 0
+    }
+  },
+  "readiness_spo2_personal": {
+    "input": {
+      "avgPct": [
+        97.0,
+        96.0,
+        95.5,
+        94.0,
+        92.0,
+        89.0
+      ],
+      "baseline": 96.0
+    },
+    "output": {
+      "97.0": 100,
+      "96.0": 100,
+      "95.5": 70,
+      "94.0": 60,
+      "92.0": 27,
+      "89.0": 0
+    }
+  },
+  "readiness_blend_all": {
+    "input": {
+      "components": {
+        "sleep": 80,
+        "recovery": 70,
+        "rhr": 90,
+        "spo2": 100,
+        "fatigue": 85
+      }
+    },
+    "output": 82
+  },
+  "readiness_blend_missing_optional": {
+    "input": {
+      "components": {
+        "sleep": 80,
+        "recovery": 70
+      }
+    },
+    "note": "no RHR/SpO2/fatigue data → weights renormalize (0.35/0.25)",
+    "output": 76
+  },
+  "activity_goal_kcal": {
+    "input": {
+      "goalSteps": [
+        7000,
+        5000,
+        3000,
+        20000,
+        0
+      ]
+    },
+    "output": {
+      "7000": 280,
+      "5000": 200,
+      "3000": 150,
+      "20000": 800,
+      "0": 150
+    }
+  },
+  "activity_day_target": {
+    "input": {
+      "readiness": [
+        0,
+        30,
+        55,
+        80,
+        100
+      ]
+    },
+    "output": {
+      "0": 100,
+      "30": 41,
+      "55": 55,
+      "80": 69,
+      "100": 80
+    }
+  },
+  "activity_today_target_kcal": {
+    "input": {
+      "goalKcal": 280,
+      "dayTargetPercent": [
+        30,
+        55,
+        90
+      ]
+    },
+    "output": {
+      "30": 80,
+      "55": 150,
+      "90": 250
+    }
+  },
+  "activity_score_from_kcal": {
+    "input": {
+      "totalKcal": [
+        0,
+        140,
+        280,
+        420,
+        999
+      ],
+      "goalKcal": 280
+    },
+    "output": {
+      "0": 0,
+      "140": 50,
+      "280": 100,
+      "420": 100,
+      "999": 100
+    }
+  },
+  "activity_aggregate_peak": {
+    "input": {
+      "records": "3 bracelet records, peak 800/32/640"
+    },
+    "output": {
+      "steps": 800,
+      "calories": 32.0,
+      "distance": 640.0
+    }
+  },
+  "activity_prefer_wearable": {
+    "input": {
+      "records": "1 RING (700) + 3 BRACELET (peak 800)"
+    },
+    "output": {
+      "preferred": [
+        "BRACELET",
+        "BRACELET",
+        "BRACELET"
+      ],
+      "aggregate": {
+        "steps": 800,
+        "calories": 32.0,
+        "distance": 640.0
+      }
+    }
+  },
+  "baseline_confidence": {
+    "input": {
+      "sampleCounts": [
+        0,
+        1,
+        7,
+        13,
+        14,
+        29,
+        30,
+        45
+      ]
+    },
+    "output": {
+      "0": "none",
+      "1": "early",
+      "7": "provisional",
+      "13": "provisional",
+      "14": "good",
+      "29": "good",
+      "30": "optimal",
+      "45": "optimal"
+    }
+  },
+  "baseline_shrinkage": {
+    "input": {
+      "observed": 72.0,
+      "prior": 65.0,
+      "sampleCounts": [
+        0,
+        5,
+        15,
+        30,
+        60
+      ]
+    },
+    "output": {
+      "0": 65.0,
+      "5": 66.16666666666667,
+      "15": 68.5,
+      "30": 72.0,
+      "60": 72.0
+    }
+  },
+  "demographic_steps_prior": {
+    "input": {
+      "base": 7000,
+      "age65": 6000,
+      "age25": 7500,
+      "bmi30": 6500,
+      "female": 7000,
+      "male": 7500,
+      "all": 7500
+    },
+    "output": {
+      "age65": 6000,
+      "age25": 7500,
+      "bmi30": 6500,
+      "female": 7000,
+      "male": 7500,
+      "all": 7500
+    }
+  },
+  "demographic_sleep_prior": {
+    "input": {
+      "age20": 510,
+      "age70": 450,
+      "age40": 480
+    },
+    "output": {
+      "age20": 510,
+      "age70": 450,
+      "age40": 480
+    }
+  }
+}

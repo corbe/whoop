@@ -1,0 +1,583 @@
+{
+  "goal_s1_increase": {
+    "input": {
+      "days30Steps": 9000,
+      "currentGoal": 7000
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 9000.0,
+        "prior": 7500.0,
+        "observed": 9000.0,
+        "sampleCount": 30,
+        "confidence": "optimal"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": true,
+        "newStepsGoal": 9000,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 9000.0
+    }
+  },
+  "goal_s2_decrease": {
+    "input": {
+      "days30Steps": 4000,
+      "currentGoal": 7000
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 4000.0,
+        "prior": 7500.0,
+        "observed": 4000.0,
+        "sampleCount": 30,
+        "confidence": "optimal"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": true,
+        "newStepsGoal": 4550,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 4550.0
+    }
+  },
+  "goal_s3_unchanged": {
+    "input": {
+      "days30Steps": 7000,
+      "currentGoal": 7000
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 7000.0,
+        "prior": 7500.0,
+        "observed": 7000.0,
+        "sampleCount": 30,
+        "confidence": "optimal"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": false,
+        "newStepsGoal": null,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 7000.0
+    }
+  },
+  "goal_s4_cap_boundary": {
+    "input": {
+      "days30Steps": 9455,
+      "currentGoal": 7000
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 9455.0,
+        "prior": 7500.0,
+        "observed": 9455.0,
+        "sampleCount": 30,
+        "confidence": "optimal"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": true,
+        "newStepsGoal": 9450,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 9450.0
+    }
+  },
+  "goal_s4b_cap_nontrigger": {
+    "input": {
+      "days30Steps": 9450,
+      "currentGoal": 7000
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 9450.0,
+        "prior": 7500.0,
+        "observed": 9450.0,
+        "sampleCount": 30,
+        "confidence": "optimal"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": true,
+        "newStepsGoal": 9450,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 9450.0
+    }
+  },
+  "goal_s5_insufficient": {
+    "input": {
+      "days10Steps": 8000,
+      "currentGoal": 7000
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 7666.666666666668,
+        "prior": 7500.0,
+        "observed": 8000.0,
+        "sampleCount": 10,
+        "confidence": "provisional"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": true,
+        "newStepsGoal": 7665,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 7665.0
+    }
+  },
+  "goal_s6_missing_days": {
+    "input": {
+      "days14Steps": 8000,
+      "zeroDays": 16,
+      "currentGoal": 7000
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 7733.333333333334,
+        "prior": 7500.0,
+        "observed": 8000.0,
+        "sampleCount": 14,
+        "confidence": "good"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": true,
+        "newStepsGoal": 7735,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 7735.0
+    }
+  },
+  "goal_s7_extreme_high": {
+    "input": {
+      "days30Steps": 20000,
+      "currentGoal": 7000
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 20000.0,
+        "prior": 7500.0,
+        "observed": 20000.0,
+        "sampleCount": 30,
+        "confidence": "optimal"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": true,
+        "newStepsGoal": 9450,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 9450.0
+    }
+  },
+  "goal_s8_extreme_low": {
+    "input": {
+      "days30Steps": 100,
+      "currentGoal": 7000
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 100.0,
+        "prior": 7500.0,
+        "observed": 100.0,
+        "sampleCount": 30,
+        "confidence": "optimal"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": true,
+        "newStepsGoal": 4550,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 4550.0
+    }
+  },
+  "goal_s9_new_user": {
+    "input": {
+      "noSteps": true,
+      "noGoal": true
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 7500.0,
+        "prior": 7500.0,
+        "observed": null,
+        "sampleCount": 0,
+        "confidence": "none"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": false,
+        "newStepsGoal": null,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 7500.0
+    }
+  },
+  "goal_s10_manual_override": {
+    "input": {
+      "days30Steps": 9000,
+      "currentGoal": 7000
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 9000.0,
+        "prior": 7500.0,
+        "observed": 9000.0,
+        "sampleCount": 30,
+        "confidence": "optimal"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": false,
+        "newStepsGoal": null,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 7000.0
+    }
+  },
+  "goal_s11_repeated": {
+    "input": {
+      "days30Steps": 9000,
+      "currentGoal": 7000
+    },
+    "first": {
+      "stepsBaseline": {
+        "value": 9000.0,
+        "prior": 7500.0,
+        "observed": 9000.0,
+        "sampleCount": 30,
+        "confidence": "optimal"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": true,
+        "newStepsGoal": 9000,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 9000.0
+    },
+    "second": {
+      "stepsBaseline": {
+        "value": 9000.0,
+        "prior": 7500.0,
+        "observed": 9000.0,
+        "sampleCount": 30,
+        "confidence": "optimal"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 0,
+        "confidence": "none",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": false,
+        "newStepsGoal": null,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 9000.0
+    }
+  },
+  "goal_t1_bedtime_shift": {
+    "input": {
+      "nights21Bed": "23:30",
+      "durationMin": 480,
+      "currentBed": 1320,
+      "currentTarget": 480
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 7500.0,
+        "prior": 7500.0,
+        "observed": null,
+        "sampleCount": 0,
+        "confidence": "none"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1410,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 21,
+        "confidence": "good",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": false,
+        "newStepsGoal": null,
+        "sleepUpdated": true,
+        "newBedTimeMinutes": 1350,
+        "newSleepTargetMinutes": 480
+      },
+      "persistedGoalSteps": 7500.0
+    }
+  },
+  "goal_t2_target_decrease": {
+    "input": {
+      "nights21Bed": "23:00",
+      "durationMin": 360,
+      "currentBed": 1320,
+      "currentTarget": 480
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 7500.0,
+        "prior": 7500.0,
+        "observed": null,
+        "sampleCount": 0,
+        "confidence": "none"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1380,
+        "sleepTargetMinutes": 360,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 21,
+        "confidence": "good",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": false,
+        "newStepsGoal": null,
+        "sleepUpdated": true,
+        "newBedTimeMinutes": 1350,
+        "newSleepTargetMinutes": 450
+      },
+      "persistedGoalSteps": 7500.0
+    }
+  },
+  "goal_t3_sleep_unchanged": {
+    "input": {
+      "nights21Bed": "22:00",
+      "durationMin": 480,
+      "currentBed": 1320,
+      "currentTarget": 480
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 7500.0,
+        "prior": 7500.0,
+        "observed": null,
+        "sampleCount": 0,
+        "confidence": "none"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1320,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 21,
+        "confidence": "good",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": false,
+        "newStepsGoal": null,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 7500.0
+    }
+  },
+  "goal_t4_sleep_manual_override": {
+    "input": {
+      "nights21Bed": "23:30",
+      "durationMin": 480,
+      "currentBed": 1320,
+      "currentTarget": 480
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 7500.0,
+        "prior": 7500.0,
+        "observed": null,
+        "sampleCount": 0,
+        "confidence": "none"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1410,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 21,
+        "confidence": "good",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": false,
+        "newStepsGoal": null,
+        "sleepUpdated": false,
+        "newBedTimeMinutes": null,
+        "newSleepTargetMinutes": null
+      },
+      "persistedGoalSteps": 7500.0
+    }
+  },
+  "goal_t5_sleep_insufficient": {
+    "input": {
+      "nights10Bed": "23:30",
+      "durationMin": 480,
+      "currentBed": 1320,
+      "currentTarget": 480
+    },
+    "output": {
+      "stepsBaseline": {
+        "value": 7500.0,
+        "prior": 7500.0,
+        "observed": null,
+        "sampleCount": 0,
+        "confidence": "none"
+      },
+      "sleepBaselines": {
+        "bedTimeMinutes": 1365,
+        "sleepTargetMinutes": 480,
+        "priorBedTimeMinutes": 1320.0,
+        "priorSleepTargetMinutes": 480.0,
+        "sampleCount": 10,
+        "confidence": "provisional",
+        "bedtimeStdDevMinutes": 0.0
+      },
+      "update": {
+        "stepsUpdated": false,
+        "newStepsGoal": null,
+        "sleepUpdated": true,
+        "newBedTimeMinutes": 1350,
+        "newSleepTargetMinutes": 480
+      },
+      "persistedGoalSteps": 7500.0
+    }
+  }
+}
