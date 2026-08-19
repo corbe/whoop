@@ -13,12 +13,12 @@ ARG VERSION=dev
 ARG COMMIT=unknown
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath \
       -ldflags "-s -w \
-        -X github.com/noana-org/ritma-app/wellness-engine/internal/versioning.EngineVersion=${VERSION} \
-        -X github.com/noana-org/ritma-app/wellness-engine/internal/versioning.BuildCommit=${COMMIT}" \
+        -X github.com/noana-org/noana-wellness-app/wellness-engine/internal/versioning.EngineVersion=${VERSION} \
+        -X github.com/noana-org/noana-wellness-app/wellness-engine/internal/versioning.BuildCommit=${COMMIT}" \
       -o /out/wellness-api ./cmd/wellness-api && \
     CGO_ENABLED=0 GOOS=linux go build -trimpath \
       -ldflags "-s -w \
-        -X github.com/noana-org/ritma-app/wellness-engine/internal/versioning.EngineVersion=${VERSION}" \
+        -X github.com/noana-org/noana-wellness-app/wellness-engine/internal/versioning.EngineVersion=${VERSION}" \
       -o /out/wellness-shadow ./cmd/wellness-shadow && \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -o /out/wellness-engine ./cmd/wellness-engine
 

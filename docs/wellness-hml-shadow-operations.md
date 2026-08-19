@@ -63,6 +63,16 @@ Summary query:
 - no PII leakage (person_hash only)
 - sleep-stage mapping: PENDING REAL-DEVICE (blocks cutover, not shadow)
 
+## Real HML findings
+
+2026-08-19 Phase A attempt: deployment + migrations executed and verified
+(health/ready 200, version hml-a6ab786, 159 → 166 tables, isolation
+proven); input fetch BLOCKED on a valid HML backend credential
+(noana-secrets COGNITO_PASS stale); official dailyscore is sparse and uses
+a strain/physical_capacity model; activity calories/distance/session kcal
+UNAVAILABLE in the HML DB (INPUT_INCOMPLETE stays). Details:
+`docs/wellness-hml-phase-a-findings.md`.
+
 ## Known open items
 
 - steps calories/distance: backend `passos` carries value only; official

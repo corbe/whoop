@@ -17,7 +17,6 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532 # distroless nonroot
-        readOnlyRootFilesystem: true
       containers:
         - name: api
           image: noana-hml/wellness-engine:dev # operator replaces with the built tag

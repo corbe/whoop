@@ -2,8 +2,8 @@
 VERSION ?= dev
 COMMIT  ?= $(shell git -C .. rev-parse --short HEAD 2>/dev/null || echo unknown)
 LDFLAGS = -s -w \
-  -X github.com/noana-org/ritma-app/wellness-engine/internal/versioning.EngineVersion=$(VERSION) \
-  -X github.com/noana-org/ritma-app/wellness-engine/internal/versioning.BuildCommit=$(COMMIT)
+  -X github.com/noana-org/noana-wellness-app/wellness-engine/internal/versioning.EngineVersion=$(VERSION) \
+  -X github.com/noana-org/noana-wellness-app/wellness-engine/internal/versioning.BuildCommit=$(COMMIT)
 
 .PHONY: build test docker-build docker-smoke
 

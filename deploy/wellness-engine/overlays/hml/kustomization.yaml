@@ -8,4 +8,5 @@ resources:
   - ../../base
 images:
   - name: noana-hml/wellness-engine
-    newTag: hml
+    newName: 525534623487.dkr.ecr.us-east-1.amazonaws.com/noana-wellness-engine
+    newTag: hml-a6ab786
