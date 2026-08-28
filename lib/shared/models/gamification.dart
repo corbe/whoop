@@ -60,7 +60,7 @@ class Achievement {
   }
 }
 
-/// Gamification summary (spec §39).
+/// Gamification summary (spec §39; Fase 4 níveis).
 class GamificationSummary {
   const GamificationSummary({
     required this.unlockedCount,
@@ -72,6 +72,7 @@ class GamificationSummary {
     required this.selectedBadges,
     this.lastQualifiedDate,
     this.dailyPoints,
+    this.levelProgress,
   });
 
   final int unlockedCount;
@@ -86,15 +87,27 @@ class GamificationSummary {
   /// Fase 1 — gamificação fisiológica (pontos por consistência).
   final DailyPointsSummary? dailyPoints;
 
+  /// Fase 4 — progressão de nível estruturada (null em respostas antigas).
+  final LevelProgress? levelProgress;
+
   factory GamificationSummary.fromJson(Map<String, dynamic> json) {
     final rawDaily = json['daily_points'];
+    final rawLevel = json['level'];
+    // Compatibilidade retroativa: respostas antigas têm level como int;
+    // a Fase 4 envia um objeto de progressão.
+    final LevelProgress? levelProgress = rawLevel is Map<String, dynamic>
+        ? LevelProgress.fromJson(rawLevel)
+        : null;
+    final int level = rawLevel is Map<String, dynamic>
+        ? (rawLevel['current'] as int?) ?? 1
+        : (rawLevel as int?) ?? 1;
     return GamificationSummary(
       unlockedCount: (json['unlocked_count'] as int?) ?? 0,
       totalCount: (json['total_count'] as int?) ?? 0,
       currentStreak: (json['current_streak'] as int?) ?? 0,
       bestStreak: (json['best_streak'] as int?) ?? 0,
       points: (json['points'] as int?) ?? 0,
-      level: (json['level'] as int?) ?? 1,
+      level: level,
       lastQualifiedDate: json['last_qualified_date'] == null
           ? null
           : DateTime.tryParse(json['last_qualified_date'] as String),
@@ -104,6 +117,58 @@ class GamificationSummary {
       dailyPoints: rawDaily is Map<String, dynamic>
           ? DailyPointsSummary.fromJson(rawDaily)
           : null,
+      levelProgress: levelProgress,
+    );
+  }
+}
+
+/// Fase 4 — progressão de nível (nível atual, faixa, próximo, percentual).
+class LevelProgress {
+  const LevelProgress({
+    required this.current,
+    required this.currentName,
+    required this.currentOrder,
+    required this.totalPoints,
+    required this.rangeStart,
+    this.next,
+    this.nextName,
+    this.nextThreshold,
+    required this.pointsInLevel,
+    this.pointsToNext,
+    required this.percent,
+    required this.isMaxLevel,
+    this.ruleVersion,
+  });
+
+  final int current;
+  final String currentName;
+  final int currentOrder;
+  final int totalPoints;
+  final int rangeStart;
+  final int? next;
+  final String? nextName;
+  final int? nextThreshold;
+  final int pointsInLevel;
+  final int? pointsToNext;
+  final double percent;
+  final bool isMaxLevel;
+  final String? ruleVersion;
+
+  factory LevelProgress.fromJson(Map<String, dynamic> json) {
+    return LevelProgress(
+      current: (json['current'] as int?) ?? 1,
+      currentName: (json['current_name'] as String?) ?? 'Nível 1',
+      currentOrder: (json['current_order'] as int?) ?? 1,
+      totalPoints: (json['total_points'] as int?) ?? 0,
+      rangeStart: (json['range_start'] as int?) ?? 0,
+      next: json['next'] as int?,
+      nextName: json['next_name'] as String?,
+      nextThreshold: json['next_threshold'] as int?,
+      pointsInLevel: (json['points_in_level'] as int?) ?? 0,
+      pointsToNext: json['points_to_next'] as int?,
+      percent: (json['percent'] as num?)?.toDouble() ?? 0,
+      isMaxLevel: (json['is_max_level'] as bool?) ?? false,
+      ruleVersion: json['rule_version'] as String?,
     );
   }
 }
@@ -126,8 +191,9 @@ class DailyPointsSummary {
 
   factory DailyPointsSummary.fromJson(Map<String, dynamic> json) {
     final rawToday = json['today'];
-    final today =
-        rawToday is Map ? Map<String, dynamic>.from(rawToday) : const {};
+    final today = rawToday is Map
+        ? Map<String, dynamic>.from(rawToday)
+        : const {};
     final rawBreakdown = today['breakdown'];
     final breakdown = rawBreakdown is Map
         ? Map<String, dynamic>.from(rawBreakdown)
@@ -135,13 +201,15 @@ class DailyPointsSummary {
     return DailyPointsSummary(
       date: (today['date'] as String?) ?? '',
       todayTotal: (today['total'] as int?) ?? 0,
-      breakdown: Map<String, int>.from(breakdown.map(
-        (k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0),
-      )),
+      breakdown: Map<String, int>.from(
+        breakdown.map((k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0)),
+      ),
       total: (json['total'] as int?) ?? 0,
       history: ((json['history'] as List?) ?? const [])
-          .map((e) => DailyPointsEntry.fromJson(
-              Map<String, dynamic>.from(e as Map)))
+          .map(
+            (e) =>
+                DailyPointsEntry.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
           .toList(),
     );
   }
@@ -164,9 +232,9 @@ class DailyPointsEntry {
     return DailyPointsEntry(
       date: (json['date'] as String?) ?? '',
       total: (json['total'] as int?) ?? 0,
-      breakdown: Map<String, int>.from(rawBreakdown.map(
-        (k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0),
-      )),
+      breakdown: Map<String, int>.from(
+        rawBreakdown.map((k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0)),
+      ),
     );
   }
 }

@@ -63,8 +63,10 @@ void main() {
       final mock = MockClient((request) async {
         expect(request.url.path, '/v1/wellness/achievements/');
         return http.Response(
-            '{"items": [${jsonEncode(_achievementJson())}]}', 200,
-            headers: {'content-type': 'application/json'});
+          '{"items": [${jsonEncode(_achievementJson())}]}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
       });
       final service = GamificationService(apiClient: _apiWith(mock));
       final items = await service.getAchievements();
@@ -79,12 +81,13 @@ void main() {
       final mock = MockClient((request) async {
         expect(request.url.path, '/v1/wellness/gamification/summary/');
         return http.Response(
-            '{"unlocked_count":4,"total_count":11,"current_streak":6,'
-            '"best_streak":12,"points":85,"level":2,'
-            '"selected_badges":[{"code":"FIRST_SCORE","name":"Primeiro registro",'
-            '"icon_key":"first_score","position":1}]}',
-            200,
-            headers: {'content-type': 'application/json'});
+          '{"unlocked_count":4,"total_count":11,"current_streak":6,'
+          '"best_streak":12,"points":85,"level":2,'
+          '"selected_badges":[{"code":"FIRST_SCORE","name":"Primeiro registro",'
+          '"icon_key":"first_score","position":1}]}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
       });
       final service = GamificationService(apiClient: _apiWith(mock));
       final summary = await service.getSummary();
@@ -100,11 +103,12 @@ void main() {
       final mock = MockClient((request) async {
         expect(request.url.path, '/v1/wellness/streaks/');
         return http.Response(
-            '{"streaks":[{"streak_type":"daily_score","current_count":3,'
-            '"best_count":5,"current_start_date":"2026-08-11",'
-            '"last_qualified_date":"2026-08-13"}]}',
-            200,
-            headers: {'content-type': 'application/json'});
+          '{"streaks":[{"streak_type":"daily_score","current_count":3,'
+          '"best_count":5,"current_start_date":"2026-08-11",'
+          '"last_qualified_date":"2026-08-13"}]}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
       });
       final service = GamificationService(apiClient: _apiWith(mock));
       final streaks = await service.getStreaks();
@@ -116,12 +120,15 @@ void main() {
       final mock = MockClient((request) async {
         expect(request.method, 'POST');
         expect(request.url.path, '/v1/wellness/gamification/select-badges/');
-        expect(jsonDecode(request.body), {'codes': ['FIRST_SCORE']});
+        expect(jsonDecode(request.body), {
+          'codes': ['FIRST_SCORE'],
+        });
         return http.Response(
-            '{"selected_badges":[{"code":"FIRST_SCORE","name":"Primeiro registro",'
-            '"icon_key":"first_score","position":1}]}',
-            200,
-            headers: {'content-type': 'application/json'});
+          '{"selected_badges":[{"code":"FIRST_SCORE","name":"Primeiro registro",'
+          '"icon_key":"first_score","position":1}]}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
       });
       final service = GamificationService(apiClient: _apiWith(mock));
       final badges = await service.selectBadges(['FIRST_SCORE']);
@@ -129,8 +136,9 @@ void main() {
     });
 
     test('API error surfaces as ApiException', () async {
-      final mock =
-          MockClient((request) async => http.Response('{"detail":"no"}', 500));
+      final mock = MockClient(
+        (request) async => http.Response('{"detail":"no"}', 500),
+      );
       final service = GamificationService(apiClient: _apiWith(mock));
       expect(service.getSummary(), throwsA(isA<ApiException>()));
     });
@@ -140,8 +148,7 @@ void main() {
     test('newlyUnlocked returns only new codes once', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
-      final controller =
-          container.read(gamificationActionControllerProvider);
+      final controller = container.read(gamificationActionControllerProvider);
 
       final unlocked = Achievement.fromJson(_achievementJson(unlocked: true));
       final locked = Achievement.fromJson(_achievementJson());
@@ -166,7 +173,9 @@ void main() {
     });
 
     test('unlocked achievement carries unlockedAt', () {
-      final a = Achievement.fromJson(_achievementJson(unlocked: true, progress: 7));
+      final a = Achievement.fromJson(
+        _achievementJson(unlocked: true, progress: 7),
+      );
       expect(a.unlocked, isTrue);
       expect(a.unlockedAt, isNotNull);
     });
@@ -185,6 +194,74 @@ void main() {
       expect(s.currentStreak, 0);
       expect(s.selectedBadges, isEmpty);
       expect(s.dailyPoints, isNull);
+      expect(s.levelProgress, isNull); // resposta antiga (level int)
+    });
+
+    test('Fase 4: parses level as object (levelProgress)', () {
+      final s = GamificationSummary.fromJson({
+        'unlocked_count': 2,
+        'total_count': 11,
+        'current_streak': 1,
+        'best_streak': 3,
+        'points': 137,
+        'level': {
+          'current': 3,
+          'current_name': 'Nível 3',
+          'current_order': 3,
+          'total_points': 137,
+          'range_start': 120,
+          'next': 4,
+          'next_name': 'Nível 4',
+          'next_threshold': 250,
+          'points_in_level': 17,
+          'points_to_next': 113,
+          'percent': 13.1,
+          'is_max_level': false,
+          'rule_version': 'fase4/v1',
+        },
+        'selected_badges': [],
+      });
+      expect(s.level, 3); // compatível com int via current
+      final lp = s.levelProgress!;
+      expect(lp.currentName, 'Nível 3');
+      expect(lp.rangeStart, 120);
+      expect(lp.nextThreshold, 250);
+      expect(lp.pointsToNext, 113);
+      expect(lp.percent, 13.1);
+      expect(lp.isMaxLevel, isFalse);
+      expect(lp.ruleVersion, 'fase4/v1');
+    });
+
+    test('Fase 4: level max (no next, percent 100)', () {
+      final s = GamificationSummary.fromJson({
+        'unlocked_count': 17,
+        'total_count': 17,
+        'current_streak': 30,
+        'best_streak': 30,
+        'points': 5000,
+        'level': {
+          'current': 6,
+          'current_name': 'Nível 6',
+          'current_order': 6,
+          'total_points': 5000,
+          'range_start': 1000,
+          'next': null,
+          'next_name': null,
+          'next_threshold': null,
+          'points_in_level': 4000,
+          'points_to_next': null,
+          'percent': 100.0,
+          'is_max_level': true,
+          'rule_version': 'fase4/v1',
+        },
+        'selected_badges': [],
+      });
+      final lp = s.levelProgress!;
+      expect(lp.isMaxLevel, isTrue);
+      expect(lp.next, isNull);
+      expect(lp.nextThreshold, isNull);
+      expect(lp.pointsToNext, isNull);
+      expect(lp.percent, 100.0);
     });
 
     test('parses daily_points (Fase 1)', () {

@@ -100,7 +100,8 @@ class _SummaryHeader extends ConsumerWidget {
     final theme = Theme.of(context);
     final summaryAsync = ref.watch(gamificationSummaryProvider);
     return summaryAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      loading: () =>
+          const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       error: (e, _) => Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -114,26 +115,8 @@ class _SummaryHeader extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Nível + pontos
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'NÍVEL ${summary.level}',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  Text(
-                    '${summary.points} PTS',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
+              // Nível + pontos (Fase 4: progressão estruturada)
+              _LevelHeader(summary: summary),
               const SizedBox(height: 20),
               // Fase 1 — card "pontos de hoje" (consistência fisiológica).
               if (summary.dailyPoints != null)
@@ -177,8 +160,9 @@ class _SummaryHeader extends ConsumerWidget {
                       ? 0
                       : summary.unlockedCount / summary.totalCount,
                   minHeight: 8,
-                  backgroundColor:
-                      theme.colorScheme.primary.withValues(alpha: 0.12),
+                  backgroundColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.12,
+                  ),
                 ),
               ),
               const SizedBox(height: 6),
@@ -192,6 +176,95 @@ class _SummaryHeader extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _LevelHeader extends StatelessWidget {
+  const _LevelHeader({required this.summary});
+
+  final GamificationSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final progress = summary.levelProgress;
+    final points = summary.points;
+
+    // Resposta antiga (sem levelProgress): fallback para o header simples.
+    if (progress == null) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'NÍVEL ${summary.level}',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+          Text(
+            '$points PTS',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Barra SEMPRE entre 0 e 100 (clamp); nunca NaN/negativo.
+    final percent = progress.percent.clamp(0.0, 100.0);
+    final isMax = progress.isMaxLevel;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                isMax
+                    ? 'NÍVEL MÁXIMO · ${progress.currentName}'
+                    : progress.currentName,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            Text(
+              '$points PTS',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: percent / 100,
+            minHeight: 8,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          isMax
+              ? 'Você alcançou o nível mais alto — continue somando pontos!'
+              : '${progress.pointsToNext ?? 0} pts para '
+                    '${progress.nextName ?? 'o próximo nível'} '
+                    '(${progress.nextThreshold ?? 0} pts)',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -260,7 +333,8 @@ class _DailyPointsCard extends StatelessWidget {
               children: [
                 for (final rule in rules)
                   _PointsChip(
-                    label: '${_ruleLabels[rule.key] ?? rule.key} +${rule.value}',
+                    label:
+                        '${_ruleLabels[rule.key] ?? rule.key} +${rule.value}',
                   ),
               ],
             ),
@@ -294,8 +368,11 @@ class _PointsChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.stars_outlined,
-              size: 14, color: theme.colorScheme.onSurfaceVariant),
+          Icon(
+            Icons.stars_outlined,
+            size: 14,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 6),
           Text(label, style: theme.textTheme.labelMedium),
         ],
@@ -311,7 +388,8 @@ class _AchievementsList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final achievementsAsync = ref.watch(achievementsProvider);
     return achievementsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      loading: () =>
+          const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       error: (e, _) => Text('Falha ao carregar conquistas: $e'),
       data: (achievements) {
         // Unlock UX dedup (spec §52): celebra apenas os novos da sessão.
@@ -334,17 +412,24 @@ class _AchievementsList extends ConsumerWidget {
             showDialog(
               context: context,
               builder: (_) => AlertDialog(
-                icon: const Icon(Icons.emoji_events, size: 48,
-                    color: Colors.amber),
+                icon: const Icon(
+                  Icons.emoji_events,
+                  size: 48,
+                  color: Colors.amber,
+                ),
                 title: const Text('Conquista desbloqueada!'),
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: stillNew
-                      .map((a) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Text('${_iconFor(a.iconKey) == Icons.emoji_events ? "🏆" : "⭐"} ${a.name}',
-                                textAlign: TextAlign.center),
-                          ))
+                      .map(
+                        (a) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            '${_iconFor(a.iconKey) == Icons.emoji_events ? "🏆" : "⭐"} ${a.name}',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
                 actions: [
@@ -412,18 +497,23 @@ class _AchievementTile extends StatelessWidget {
                   backgroundColor: unlocked
                       ? theme.colorScheme.primary
                       : theme.colorScheme.surfaceContainerHighest,
-                  child: Icon(icon,
-                      size: 24,
-                      color: unlocked
-                          ? Colors.white
-                          : theme.colorScheme.onSurfaceVariant),
+                  child: Icon(
+                    icon,
+                    size: 24,
+                    color: unlocked
+                        ? Colors.white
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 if (!unlocked)
                   const Positioned(
                     right: -4,
                     bottom: -4,
-                    child: Icon(Icons.lock_outline,
-                        size: 12, color: Colors.black54),
+                    child: Icon(
+                      Icons.lock_outline,
+                      size: 12,
+                      color: Colors.black54,
+                    ),
                   ),
               ],
             ),
@@ -440,8 +530,9 @@ class _AchievementTile extends StatelessWidget {
             if (!unlocked && achievement.target > 1)
               Text(
                 '${achievement.progress}/${achievement.target}',
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
           ],
         ),
