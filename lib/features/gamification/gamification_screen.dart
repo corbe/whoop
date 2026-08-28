@@ -125,6 +125,10 @@ class _SummaryHeader extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 20),
+              // Fase 1 — card "pontos de hoje" (consistência fisiológica).
+              if (summary.dailyPoints != null)
+                _DailyPointsCard(summary: summary.dailyPoints!),
+              const SizedBox(height: 20),
               // Streak: o ZERO é a métrica
               Center(
                 child: Column(
@@ -178,6 +182,114 @@ class _SummaryHeader extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _DailyPointsCard extends StatelessWidget {
+  const _DailyPointsCard({required this.summary});
+
+  final DailyPointsSummary summary;
+
+  static const Map<String, String> _ruleLabels = {
+    'day_completed': 'Dia completo',
+    'rings_closed': '3 anéis fechados',
+    'data_streak_7': 'Série de 7 dias',
+    'activity_zone': 'Atividade na meta',
+    'sleep_zone': 'Sono na meta',
+    'strain_recorded': 'Strain registrado',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final rules = summary.breakdown.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'PONTOS DE HOJE',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              Text(
+                '${summary.todayTotal} pts',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (rules.isEmpty)
+            Text(
+              'Registre scores hoje para ganhar pontos de consistência.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final rule in rules)
+                  _PointsChip(
+                    label: '${_ruleLabels[rule.key] ?? rule.key} +${rule.value}',
+                  ),
+              ],
+            ),
+          const SizedBox(height: 8),
+          Text(
+            'Total acumulado: ${summary.total} pts',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PointsChip extends StatelessWidget {
+  const _PointsChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.stars_outlined,
+              size: 14, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Text(label, style: theme.textTheme.labelMedium),
+        ],
+      ),
     );
   }
 }

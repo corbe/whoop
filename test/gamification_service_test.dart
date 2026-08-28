@@ -184,6 +184,72 @@ void main() {
       expect(s.unlockedCount, 0);
       expect(s.currentStreak, 0);
       expect(s.selectedBadges, isEmpty);
+      expect(s.dailyPoints, isNull);
+    });
+
+    test('parses daily_points (Fase 1)', () {
+      final s = GamificationSummary.fromJson({
+        'unlocked_count': 4,
+        'total_count': 11,
+        'current_streak': 6,
+        'best_streak': 12,
+        'points': 85,
+        'level': 2,
+        'selected_badges': [],
+        'daily_points': {
+          'today': {
+            'date': '2026-08-28',
+            'total': 30,
+            'breakdown': {
+              'day_completed': 5,
+              'rings_closed': 10,
+              'activity_zone': 5,
+              'sleep_zone': 5,
+              'strain_recorded': 5,
+            },
+          },
+          'total': 120,
+          'history': [
+            {
+              'date': '2026-08-28',
+              'total': 30,
+              'breakdown': {'day_completed': 5},
+            },
+            {
+              'date': '2026-08-27',
+              'total': 25,
+              'breakdown': {'sleep_zone': 5},
+            },
+          ],
+        },
+      });
+      expect(s.dailyPoints, isNotNull);
+      expect(s.dailyPoints!.todayTotal, 30);
+      expect(s.dailyPoints!.total, 120);
+      expect(s.dailyPoints!.breakdown['rings_closed'], 10);
+      expect(s.dailyPoints!.history, hasLength(2));
+      expect(s.dailyPoints!.history.first.total, 30);
+      expect(s.dailyPoints!.history.first.breakdown['day_completed'], 5);
+    });
+
+    test('daily_points empty today (no rewards yet)', () {
+      final s = GamificationSummary.fromJson({
+        'unlocked_count': 0,
+        'total_count': 11,
+        'current_streak': 0,
+        'best_streak': 0,
+        'points': 0,
+        'level': 1,
+        'selected_badges': [],
+        'daily_points': {
+          'today': {'date': '2026-08-28', 'total': 0, 'breakdown': {}},
+          'total': 0,
+          'history': [],
+        },
+      });
+      expect(s.dailyPoints!.todayTotal, 0);
+      expect(s.dailyPoints!.breakdown, isEmpty);
+      expect(s.dailyPoints!.history, isEmpty);
     });
   });
 }

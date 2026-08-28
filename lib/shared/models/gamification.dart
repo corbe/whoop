@@ -71,6 +71,7 @@ class GamificationSummary {
     required this.level,
     required this.selectedBadges,
     this.lastQualifiedDate,
+    this.dailyPoints,
   });
 
   final int unlockedCount;
@@ -82,7 +83,11 @@ class GamificationSummary {
   final List<SelectedBadge> selectedBadges;
   final DateTime? lastQualifiedDate;
 
+  /// Fase 1 — gamificação fisiológica (pontos por consistência).
+  final DailyPointsSummary? dailyPoints;
+
   factory GamificationSummary.fromJson(Map<String, dynamic> json) {
+    final rawDaily = json['daily_points'];
     return GamificationSummary(
       unlockedCount: (json['unlocked_count'] as int?) ?? 0,
       totalCount: (json['total_count'] as int?) ?? 0,
@@ -96,6 +101,72 @@ class GamificationSummary {
       selectedBadges: ((json['selected_badges'] as List?) ?? const [])
           .map((e) => SelectedBadge.fromJson(e as Map<String, dynamic>))
           .toList(),
+      dailyPoints: rawDaily is Map<String, dynamic>
+          ? DailyPointsSummary.fromJson(rawDaily)
+          : null,
+    );
+  }
+}
+
+/// Pontos diários da Fase 1 (card "pontos de hoje").
+class DailyPointsSummary {
+  const DailyPointsSummary({
+    required this.date,
+    required this.todayTotal,
+    required this.breakdown,
+    required this.total,
+    required this.history,
+  });
+
+  final String date;
+  final int todayTotal;
+  final Map<String, int> breakdown;
+  final int total;
+  final List<DailyPointsEntry> history;
+
+  factory DailyPointsSummary.fromJson(Map<String, dynamic> json) {
+    final rawToday = json['today'];
+    final today =
+        rawToday is Map ? Map<String, dynamic>.from(rawToday) : const {};
+    final rawBreakdown = today['breakdown'];
+    final breakdown = rawBreakdown is Map
+        ? Map<String, dynamic>.from(rawBreakdown)
+        : const <String, dynamic>{};
+    return DailyPointsSummary(
+      date: (today['date'] as String?) ?? '',
+      todayTotal: (today['total'] as int?) ?? 0,
+      breakdown: Map<String, int>.from(breakdown.map(
+        (k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0),
+      )),
+      total: (json['total'] as int?) ?? 0,
+      history: ((json['history'] as List?) ?? const [])
+          .map((e) => DailyPointsEntry.fromJson(
+              Map<String, dynamic>.from(e as Map)))
+          .toList(),
+    );
+  }
+}
+
+/// Uma entrada do histórico de pontos (date, total, breakdown).
+class DailyPointsEntry {
+  const DailyPointsEntry({
+    required this.date,
+    required this.total,
+    required this.breakdown,
+  });
+
+  final String date;
+  final int total;
+  final Map<String, int> breakdown;
+
+  factory DailyPointsEntry.fromJson(Map<String, dynamic> json) {
+    final rawBreakdown = json['breakdown'] as Map<String, dynamic>? ?? const {};
+    return DailyPointsEntry(
+      date: (json['date'] as String?) ?? '',
+      total: (json['total'] as int?) ?? 0,
+      breakdown: Map<String, int>.from(rawBreakdown.map(
+        (k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0),
+      )),
     );
   }
 }
