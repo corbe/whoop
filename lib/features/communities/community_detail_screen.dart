@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -102,14 +103,18 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
               // ── TEAM HERO (identidade da comunidade) ──
               Container(
                 width: double.infinity,
-                color: Theme.of(context)
-                    .colorScheme
-                    .primaryContainer
-                    .withValues(alpha: 0.45),
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                child: Column(
-                  children: [
-                    CircleAvatar(
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primaryContainer
+                      .withValues(alpha: 0.45),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  child: Column(
+                        children: [
+                          CircleAvatar(
                       radius: 34,
                       backgroundColor:
                           Theme.of(context).colorScheme.primary,
@@ -152,7 +157,8 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
                                 .onSurfaceVariant,
                           ),
                     ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               TabBar(
@@ -174,13 +180,22 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
                     controller: _tabController,
                     children: [
                       _ChatTab(community: community),
-                      LeaderboardTab(communityUuid: widget.uuid),
-                      ChallengesTab(
-                        communityUuid: widget.uuid,
-                        communityName: community.name,
-                        isOwnerOrAdmin: _isOwnerOrAdmin(community),
-                      ),
-                      _MembersTab(uuid: widget.uuid, community: community),
+                      // Conteúdo interno (ranking/desafios/membros) exige
+                      // membership ACTIVE — não-membro vê placeholder e a UI
+                      // NÃO dispara requests que o backend agora rejeita.
+                      community.isActiveMember
+                          ? LeaderboardTab(communityUuid: widget.uuid)
+                          : const _MemberOnlyTab(),
+                      community.isActiveMember
+                          ? ChallengesTab(
+                              communityUuid: widget.uuid,
+                              communityName: community.name,
+                              isOwnerOrAdmin: _isOwnerOrAdmin(community),
+                            )
+                          : const _MemberOnlyTab(),
+                      community.isActiveMember
+                          ? _MembersTab(uuid: widget.uuid, community: community)
+                          : const _MemberOnlyTab(),
                       _OverviewTab(
                         community: community,
                         onOpenPrivacy: () => _openPrivacy(community),
@@ -206,12 +221,16 @@ class _OverviewTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final visibilityLabel = switch (community.visibility) {
-      'public_code' => 'Código público',
+      'public_code' => 'Acesso por código',
       'private' => 'Privada',
       _ => 'Somente convite',
     };
     final isMember = community.isActiveMember;
     final isOwner = community.isOwner;
+    final canShareCode =
+        (community.isOwner || community.isAdmin) &&
+        community.visibility == 'public_code' &&
+        community.joinCode.isNotEmpty;
 
     // Identidade do owner para "Criado por <nome>" — só quando o nome é
     // REALMENTE conhecido (nunca 'Membro' como fallback) e o owner não é o
@@ -288,7 +307,7 @@ class _OverviewTab extends ConsumerWidget {
           ),
           const Divider(height: 32),
         ],
-        if (community.visibility == 'public_code' && community.joinCode.isNotEmpty) ...[
+        if (canShareCode) ...[
           const RitmaSectionLabel('COMPARTILHAMENTO', padding: EdgeInsets.zero),
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -302,6 +321,21 @@ class _OverviewTab extends ConsumerWidget {
                     fontWeight: FontWeight.w600,
                     color: theme.colorScheme.primary,
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 18),
+                  tooltip: 'Copiar código',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () async {
+                    await Clipboard.setData(
+                      ClipboardData(text: community.joinCode),
+                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Código copiado.')),
+                      );
+                    }
+                  },
                 ),
               ],
             ),
@@ -601,6 +635,26 @@ class _ChatTab extends ConsumerWidget {
       communityName: community.name,
       communityUuid: community.uuid,
       groupId: groupId,
+    );
+  }
+}
+
+/// Placeholder para abas de conteúdo interno (Ranking/Desafios/Membros)
+/// quando o usuário NÃO é membro ativo — evita requests que o backend
+/// rejeita (403/404) e comunica a necessidade de entrar.
+class _MemberOnlyTab extends StatelessWidget {
+  const _MemberOnlyTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'Entre na comunidade para visualizar.',
+          textAlign: TextAlign.center,
+        ),
+      ),
     );
   }
 }
