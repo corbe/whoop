@@ -125,7 +125,7 @@ class _CreateCommunityScreenState extends ConsumerState<CreateCommunityScreen> {
   List<Widget> _visibilityOptions() {
     const options = [
       ('invite_only', 'Somente convite', 'Novos membros entram por convite.'),
-      ('public_code', 'Código público', 'Qualquer pessoa entra com o código.'),
+      ('public_code', 'Acesso por código', 'Qualquer pessoa entra com o código.'),
       ('private', 'Privada', 'Entrada apenas aprovada pelo owner.'),
     ];
     return [

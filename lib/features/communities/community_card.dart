@@ -16,7 +16,7 @@ class CommunityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final visibilityLabel = switch (community.visibility) {
-      'public_code' => 'Código',
+      'public_code' => 'Acesso por código',
       'private' => 'Privada',
       _ => 'Convite',
     };
