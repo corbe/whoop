@@ -65,8 +65,10 @@ void main() {
         expect(request.method, 'GET');
         expect(request.url.path, '/v1/wellness/communities/comm-1/challenges/');
         return http.Response(
-            '{"challenges": [${jsonEncode(_challengeJson)}]}', 200,
-            headers: {'content-type': 'application/json'});
+          '{"challenges": [${jsonEncode(_challengeJson)}]}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
       });
       final service = ChallengeService(apiClient: _apiWith(mock));
       final challenges = await service.listChallenges('comm-1');
@@ -84,8 +86,11 @@ void main() {
         expect(body['metric'], 'readiness');
         expect(body['aggregation'], 'average');
         expect(body['start_date'], '2026-08-17');
-        return http.Response(jsonEncode(_challengeJson), 201,
-            headers: {'content-type': 'application/json'});
+        return http.Response(
+          jsonEncode(_challengeJson),
+          201,
+          headers: {'content-type': 'application/json'},
+        );
       });
       final service = ChallengeService(apiClient: _apiWith(mock));
       final created = await service.createChallenge(
@@ -105,8 +110,9 @@ void main() {
       final mock = MockClient((request) async {
         expect(request.method, 'POST');
         expect(
-            request.url.path,
-            '/v1/wellness/communities/comm-1/challenges/c-1/join/');
+          request.url.path,
+          '/v1/wellness/communities/comm-1/challenges/c-1/join/',
+        );
         return http.Response('{"status":"active"}', 200);
       });
       final service = ChallengeService(apiClient: _apiWith(mock));
@@ -117,8 +123,9 @@ void main() {
       final mock = MockClient((request) async {
         expect(request.method, 'POST');
         expect(
-            request.url.path,
-            '/v1/wellness/communities/comm-1/challenges/c-1/leave/');
+          request.url.path,
+          '/v1/wellness/communities/comm-1/challenges/c-1/leave/',
+        );
         return http.Response('{"status":"left"}', 200);
       });
       final service = ChallengeService(apiClient: _apiWith(mock));
@@ -127,19 +134,22 @@ void main() {
 
     test('ranking parses entries + current position', () async {
       final mock = MockClient((request) async {
-        expect(request.url.path,
-            '/v1/wellness/communities/comm-1/challenges/c-1/ranking/');
+        expect(
+          request.url.path,
+          '/v1/wellness/communities/comm-1/challenges/c-1/ranking/',
+        );
         return http.Response(
-            '{"challenge_uuid":"c-1","status":"active","metric":"readiness",'
-            '"aggregation":"average","start_date":"2026-08-17",'
-            '"end_date":"2026-08-23","total_participants":2,'
-            '"entries":[{"position":1,"person_uuid":"p1","display_name":"Ana",'
-            '"avatar_url":"","score":91.0,"days_count":2,"qualified":true},'
-            '{"position":2,"person_uuid":"p2","display_name":"Bia",'
-            '"avatar_url":"","score":84.0,"days_count":2,"qualified":true}],'
-            '"current_user_position":2}',
-            200,
-            headers: {'content-type': 'application/json'});
+          '{"challenge_uuid":"c-1","status":"active","metric":"readiness",'
+          '"aggregation":"average","start_date":"2026-08-17",'
+          '"end_date":"2026-08-23","total_participants":2,'
+          '"entries":[{"position":1,"person_uuid":"p1","display_name":"Ana",'
+          '"avatar_url":"","score":91.0,"days_count":2,"qualified":true},'
+          '{"position":2,"person_uuid":"p2","display_name":"Bia",'
+          '"avatar_url":"","score":84.0,"days_count":2,"qualified":true}],'
+          '"current_user_position":2}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
       });
       final service = ChallengeService(apiClient: _apiWith(mock));
       final ranking = await service.getRanking('comm-1', 'c-1');
@@ -150,8 +160,12 @@ void main() {
     });
 
     test('privacy-ineligible join surfaces ApiException', () async {
-      final mock = MockClient((request) async =>
-          http.Response('{"detail":"Para participar, ative o compartilhamento"}', 403));
+      final mock = MockClient(
+        (request) async => http.Response(
+          '{"detail":"Para participar, ative o compartilhamento"}',
+          403,
+        ),
+      );
       final service = ChallengeService(apiClient: _apiWith(mock));
       expect(
         service.joinChallenge('comm-1', 'c-1'),
@@ -170,9 +184,13 @@ void main() {
           'qualified': true,
           'rank': 3,
         };
-      final mock = MockClient((request) async => http.Response(
-          jsonEncode(completedJson), 200,
-          headers: {'content-type': 'application/json'}));
+      final mock = MockClient(
+        (request) async => http.Response(
+          jsonEncode(completedJson),
+          200,
+          headers: {'content-type': 'application/json'},
+        ),
+      );
       final service = ChallengeService(apiClient: _apiWith(mock));
       final challenge = await service.getChallenge('comm-1', 'c-1');
       expect(challenge.status, ChallengeStatus.completed);
@@ -205,6 +223,105 @@ void main() {
       });
       expect(p.qualified, isFalse);
       expect(p.score, isNull);
+    });
+
+    test('Fase 3: sum_zones parses type + target + percent', () {
+      final c = Challenge.fromJson({
+        'uuid': 'x',
+        'community_uuid': 'c',
+        'name': 'Soma de zonas',
+        'metric': 'strain',
+        'aggregation': 'sum',
+        'start_date': '2026-08-17',
+        'end_date': '2026-08-23',
+        'status': 'active',
+        'challenge_type': 'sum_zones',
+        'target_value': 50,
+      });
+      expect(c.challengeType, 'sum_zones');
+      expect(c.targetValue, 50);
+
+      final p = ChallengeProgress.fromJson({
+        'participant_status': 'active',
+        'score': 45.0,
+        'days_count': 3,
+        'qualified': true,
+        'challenge_type': 'sum_zones',
+        'metric': 'strain',
+        'aggregation': 'sum',
+        'target_value': 50,
+        'percent': 90.0,
+        'rule_version': 'fase3/v1',
+      });
+      expect(p.percent, 90.0);
+      expect(p.targetValue, 50);
+      expect(p.ruleVersion, 'fase3/v1');
+    });
+
+    test('Fase 3: sleep_consistency parses average + meta', () {
+      final c = Challenge.fromJson({
+        'uuid': 'x',
+        'community_uuid': 'c',
+        'name': 'Consistência de sono',
+        'metric': 'sleep',
+        'aggregation': 'average',
+        'start_date': '2026-08-17',
+        'end_date': '2026-08-23',
+        'status': 'active',
+        'challenge_type': 'sleep_consistency',
+        'target_value': 60,
+      });
+      expect(c.challengeType, 'sleep_consistency');
+      expect(c.targetValue, 60);
+
+      final p = ChallengeProgress.fromJson({
+        'participant_status': 'active',
+        'score': 80.0,
+        'days_count': 3,
+        'qualified': true,
+        'challenge_type': 'sleep_consistency',
+        'target_value': 60,
+        'percent': 133.3, // pode passar de 100; UI limita visualmente
+      });
+      expect(p.percent, 133.3);
+    });
+
+    test('Fase 3: recovery_king has no target (percent null)', () {
+      final c = Challenge.fromJson({
+        'uuid': 'x',
+        'community_uuid': 'c',
+        'name': 'Rei da recuperação',
+        'metric': 'readiness',
+        'aggregation': 'average',
+        'start_date': '2026-08-17',
+        'end_date': '2026-08-23',
+        'status': 'active',
+        'challenge_type': 'recovery_king',
+      });
+      expect(c.challengeType, 'recovery_king');
+      expect(c.targetValue, isNull);
+
+      final p = ChallengeProgress.fromJson({
+        'participant_status': 'active',
+        'score': 85.0,
+        'days_count': 2,
+        'qualified': true,
+        'challenge_type': 'recovery_king',
+      });
+      expect(p.percent, isNull);
+      expect(p.targetValue, isNull);
+    });
+
+    test('Fase 3: create request includes target_value', () {
+      final req = ChallengeCreateRequest(
+        name: 'Soma',
+        metric: 'strain',
+        aggregation: 'sum',
+        startDate: '2026-08-17',
+        endDate: '2026-08-23',
+        targetValue: 50,
+      );
+      expect(req.toJson()['target_value'], 50);
     });
   });
 }

@@ -32,6 +32,7 @@ class _CreateChallengeScreenState extends ConsumerState<CreateChallengeScreen> {
   final _startController = TextEditingController();
   final _endController = TextEditingController();
   final _minDaysController = TextEditingController();
+  final _targetController = TextEditingController();
 
   String _metric = 'readiness';
   String _aggregation = 'average';
@@ -44,6 +45,7 @@ class _CreateChallengeScreenState extends ConsumerState<CreateChallengeScreen> {
     _startController.dispose();
     _endController.dispose();
     _minDaysController.dispose();
+    _targetController.dispose();
     super.dispose();
   }
 
@@ -67,7 +69,9 @@ class _CreateChallengeScreenState extends ConsumerState<CreateChallengeScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      await ref.read(challengeActionControllerProvider).createChallenge(
+      await ref
+          .read(challengeActionControllerProvider)
+          .createChallenge(
             widget.communityUuid,
             ChallengeCreateRequest(
               name: _nameController.text.trim(),
@@ -79,6 +83,9 @@ class _CreateChallengeScreenState extends ConsumerState<CreateChallengeScreen> {
               minDays: _minDaysController.text.isEmpty
                   ? null
                   : int.tryParse(_minDaysController.text),
+              targetValue: _targetController.text.isEmpty
+                  ? null
+                  : int.tryParse(_targetController.text),
             ),
           );
       if (!mounted) return;
@@ -86,9 +93,9 @@ class _CreateChallengeScreenState extends ConsumerState<CreateChallengeScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Falha ao criar desafio: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Falha ao criar desafio: $e')));
     }
   }
 
@@ -141,6 +148,30 @@ class _CreateChallengeScreenState extends ConsumerState<CreateChallengeScreen> {
                   .toList(),
               onChanged: (v) => setState(() => _aggregation = v!),
             ),
+            // Fase 3 — meta opcional (Soma de zonas N / Consistência de sono).
+            if (_aggregation == 'sum' ||
+                (_metric == 'sleep' && _aggregation == 'average')) ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _targetController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: _aggregation == 'sum'
+                      ? 'Meta (pontos de strain) *'
+                      : 'Meta (média de sono) *',
+                  helperText: _aggregation == 'sum'
+                      ? 'Ex.: 50 pontos de strain na semana'
+                      : 'Ex.: 60 (sua média de sono no período)',
+                ),
+                validator: (v) {
+                  final n = int.tryParse(v?.trim() ?? '');
+                  if (n == null || n <= 0) {
+                    return 'Informe uma meta numérica maior que zero';
+                  }
+                  return null;
+                },
+              ),
+            ],
             const SizedBox(height: 12),
             Row(
               children: [

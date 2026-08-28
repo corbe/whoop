@@ -5,6 +5,8 @@
 /// the source of truth for status; these helpers only describe it in words).
 library;
 
+import 'package:flutter/material.dart';
+
 import '../../shared/models/challenge.dart';
 
 /// Calendar-day difference (a - b), using local dates only.
@@ -15,14 +17,16 @@ int calendarDaysBetween(DateTime a, DateTime b) {
 }
 
 /// Days from [today] until the challenge starts (negative when started).
-int daysUntilStart(Challenge challenge, DateTime today) =>
-    calendarDaysBetween(
-        DateTime.parse(challenge.startDate), DateTime(today.year, today.month, today.day));
+int daysUntilStart(Challenge challenge, DateTime today) => calendarDaysBetween(
+  DateTime.parse(challenge.startDate),
+  DateTime(today.year, today.month, today.day),
+);
 
 /// Days from [today] until the challenge ends (negative when finished).
-int daysUntilEnd(Challenge challenge, DateTime today) =>
-    calendarDaysBetween(
-        DateTime.parse(challenge.endDate), DateTime(today.year, today.month, today.day));
+int daysUntilEnd(Challenge challenge, DateTime today) => calendarDaysBetween(
+  DateTime.parse(challenge.endDate),
+  DateTime(today.year, today.month, today.day),
+);
 
 /// Short human label for a status (PT, matches app l10n tone).
 String challengeStatusLabel(ChallengeStatus status) {
@@ -87,8 +91,64 @@ String challengeAggregationLabel(String aggregation) {
       return 'Melhor dia';
     case 'days_recorded':
       return 'Dias registrados';
+    case 'sum':
+      return 'Soma';
     default:
       return aggregation;
+  }
+}
+
+/// Fase 3 — tipo canônico do desafio (label amigável).
+String challengeTypeLabel(String? type) {
+  switch (type) {
+    case 'sum_zones':
+      return 'Soma de zonas';
+    case 'sleep_consistency':
+      return 'Consistência de sono';
+    case 'recovery_king':
+      return 'Rei da recuperação';
+    default:
+      return 'Desafio';
+  }
+}
+
+/// Fase 3 — descrição curta do tipo (regras legíveis, sem fórmula).
+String challengeTypeDescription(String? type) {
+  switch (type) {
+    case 'sum_zones':
+      return 'Some pontos de strain durante o desafio para atingir a meta.';
+    case 'sleep_consistency':
+      return 'Sua média de sono no período conta — quanto mais perto da meta, melhor.';
+    case 'recovery_king':
+      return 'A melhor prontidão média do grupo vence.';
+    default:
+      return '';
+  }
+}
+
+/// Fase 3 — frase de meta (progresso vs target), neutra e sem culpa.
+String challengeTargetSentence(int? targetValue, double? percent) {
+  if (targetValue == null) {
+    return 'Sem meta fixa — o melhor do grupo vence.';
+  }
+  final pct = percent == null ? 0 : percent.clamp(0.0, 100.0);
+  if (percent == null) {
+    return 'Meta: $targetValue. Registre dados para ver seu progresso.';
+  }
+  return 'Meta: $targetValue · ${pct.toStringAsFixed(0)}%';
+}
+
+/// Fase 3 — ícone do tipo (design tokens).
+IconData challengeTypeIcon(String? type) {
+  switch (type) {
+    case 'sum_zones':
+      return Icons.add_chart;
+    case 'sleep_consistency':
+      return Icons.bedtime_outlined;
+    case 'recovery_king':
+      return Icons.workspace_premium_outlined;
+    default:
+      return Icons.emoji_events_outlined;
   }
 }
 

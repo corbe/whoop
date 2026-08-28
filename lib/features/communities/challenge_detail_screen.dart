@@ -37,17 +37,22 @@ class ChallengeDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Desafio')),
       body: detailAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        loading: () =>
+            const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Falha ao carregar desafio: $e', textAlign: TextAlign.center),
+                Text(
+                  'Falha ao carregar desafio: $e',
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 12),
                 OutlinedButton(
-                  onPressed: () => ref.invalidate(challengeDetailProvider(_params)),
+                  onPressed: () =>
+                      ref.invalidate(challengeDetailProvider(_params)),
                   child: const Text('Tentar novamente'),
                 ),
               ],
@@ -59,7 +64,11 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetail(BuildContext context, WidgetRef ref, Challenge challenge) {
+  Widget _buildDetail(
+    BuildContext context,
+    WidgetRef ref,
+    Challenge challenge,
+  ) {
     final theme = Theme.of(context);
     final progress = challenge.currentUserProgress;
     final isParticipant = challenge.currentUserStatus == 'active';
@@ -85,17 +94,50 @@ class ChallengeDetailScreen extends ConsumerWidget {
         if (countdown.isNotEmpty)
           Text(
             countdown,
-            style: theme.textTheme.titleSmall
-                ?.copyWith(color: theme.colorScheme.primary),
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.primary,
+            ),
           ),
-        Text('${challenge.startDate} – ${challenge.endDate}',
-            style: theme.textTheme.bodyMedium),
+        Text(
+          '${challenge.startDate} – ${challenge.endDate}',
+          style: theme.textTheme.bodyMedium,
+        ),
         Text(
           '${challengeAggregationLabel(challenge.aggregation)} · '
           '${challengeMetricLabel(challenge.metric)}'
           '${challenge.minDays != null ? ' · mín. ${challenge.minDays} dias' : ''}',
           style: theme.textTheme.bodyMedium,
         ),
+        // Fase 3 — tipo + meta (neutro; dados insuficientes não frustram).
+        if (challenge.challengeType != null &&
+            challenge.challengeType != 'standard') ...[
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(
+                challengeTypeIcon(challenge.challengeType),
+                size: 16,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  challengeTypeLabel(challenge.challengeType),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (challenge.targetValue != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              challengeTargetSentence(challenge.targetValue, progress?.percent),
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+        ],
         if (challenge.description.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(challenge.description, style: theme.textTheme.bodyMedium),
@@ -106,14 +148,18 @@ class ChallengeDetailScreen extends ConsumerWidget {
             color: theme.colorScheme.errorContainer,
             child: const Padding(
               padding: EdgeInsets.all(12),
-              child: Text('Desafio cancelado',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                'Desafio cancelado',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],
         if (isCompleted)
           _WinnerBanner(
-              communityUuid: communityUuid, challengeUuid: challengeUuid),
+            communityUuid: communityUuid,
+            challengeUuid: challengeUuid,
+          ),
         const Divider(height: 24),
 
         // ── ação join/leave / privacidade (spec §51–§52) ──
@@ -135,9 +181,11 @@ class ChallengeDetailScreen extends ConsumerWidget {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                          content: Text(
-                              'Não foi possível entrar: '
-                              '${_privacyMessage(e, challenge.metric)}')),
+                        content: Text(
+                          'Não foi possível entrar: '
+                          '${_privacyMessage(e, challenge.metric)}',
+                        ),
+                      ),
                     );
                   }
                 }
@@ -153,8 +201,9 @@ class ChallengeDetailScreen extends ConsumerWidget {
                 'Ative o compartilhamento de '
                 '${challengeMetricLabel(challenge.metric)} '
                 'nas configurações de privacidade da comunidade para participar.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.secondary),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.secondary,
+                ),
               ),
             ),
         ],
@@ -173,12 +222,16 @@ class ChallengeDetailScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Posição final', style: theme.textTheme.bodySmall),
-                    Text('#${progress.rank ?? '—'}',
-                        style: theme.textTheme.headlineMedium),
+                    Text(
+                      '#${progress.rank ?? '—'}',
+                      style: theme.textTheme.headlineMedium,
+                    ),
                     const SizedBox(height: 8),
                     Text('Pontuação final', style: theme.textTheme.bodySmall),
-                    Text(progress.score?.toStringAsFixed(1) ?? '—',
-                        style: theme.textTheme.headlineMedium),
+                    Text(
+                      progress.score?.toStringAsFixed(1) ?? '—',
+                      style: theme.textTheme.headlineMedium,
+                    ),
                   ],
                 ),
               ),
@@ -190,8 +243,10 @@ class ChallengeDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Sua ${challengeAggregationLabel(challenge.aggregation).toLowerCase()}',
-                        style: theme.textTheme.bodySmall),
+                    Text(
+                      'Sua ${challengeAggregationLabel(challenge.aggregation).toLowerCase()}',
+                      style: theme.textTheme.bodySmall,
+                    ),
                     Text(
                       progress.score == null
                           ? 'Sem dados ainda'
@@ -204,6 +259,25 @@ class ChallengeDetailScreen extends ConsumerWidget {
                       '${challenge.minDays != null ? ' · mínimo: ${challenge.minDays}' : ''}',
                       style: theme.textTheme.bodyMedium,
                     ),
+                    // Fase 3 — barra de meta limitada visualmente a 100%
+                    // (o valor real pode superar a meta; a UI não explode).
+                    if (progress.percent != null &&
+                        challenge.targetValue != null) ...[
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: (progress.percent! / 100).clamp(0.0, 1.0),
+                        minHeight: 8,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        challengeTargetSentence(
+                          challenge.targetValue,
+                          progress.percent,
+                        ),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
                     if (minDays != null) ...[
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
@@ -220,8 +294,9 @@ class ChallengeDetailScreen extends ConsumerWidget {
                     if (!progress.qualified && minDays != null)
                       Text(
                         'Não qualificado: faltam dias válidos.',
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.colorScheme.error),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.error,
+                        ),
                       ),
                   ],
                 ),
@@ -240,22 +315,27 @@ class ChallengeDetailScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: challengeRules(challenge, userSharesMetric: isParticipant)
-                  .map((rule) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Padding(
-                              padding: EdgeInsets.only(top: 2, right: 8),
-                              child: Icon(Icons.check_circle_outline,
-                                  size: 18),
-                            ),
-                            Expanded(child: Text(rule)),
-                          ],
+              children:
+                  challengeRules(challenge, userSharesMetric: isParticipant)
+                      .map(
+                        (rule) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.only(top: 2, right: 8),
+                                child: Icon(
+                                  Icons.check_circle_outline,
+                                  size: 18,
+                                ),
+                              ),
+                              Expanded(child: Text(rule)),
+                            ],
+                          ),
                         ),
-                      ))
-                  .toList(),
+                      )
+                      .toList(),
             ),
           ),
         ),
@@ -263,7 +343,10 @@ class ChallengeDetailScreen extends ConsumerWidget {
 
         Text('Classificação', style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),
-        _RankingSection(communityUuid: communityUuid, challengeUuid: challengeUuid),
+        _RankingSection(
+          communityUuid: communityUuid,
+          challengeUuid: challengeUuid,
+        ),
       ],
     );
   }
@@ -274,8 +357,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
     Challenge challenge,
     ChallengeProgress? progress,
   ) async {
-    final hasProgress = progress != null &&
-        (progress.daysCount > 0 || progress.score != null);
+    final hasProgress =
+        progress != null && (progress.daysCount > 0 || progress.score != null);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -283,8 +366,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
         content: Text(
           hasProgress
               ? 'Seu progresso (${progress.daysCount} '
-                  '${progress.daysCount == 1 ? 'dia válido' : 'dias válidos'}) '
-                  'será perdido e você sai do ranking.'
+                    '${progress.daysCount == 1 ? 'dia válido' : 'dias válidos'}) '
+                    'será perdido e você sai do ranking.'
               : 'Você sairá do desafio e não aparecerá mais no ranking.',
         ),
         actions: [
@@ -325,11 +408,26 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final (background, foreground) = switch (status) {
-      ChallengeStatus.active => (scheme.primaryContainer, scheme.onPrimaryContainer),
-      ChallengeStatus.upcoming => (scheme.tertiaryContainer, scheme.onTertiaryContainer),
-      ChallengeStatus.completed => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
-      ChallengeStatus.cancelled => (scheme.errorContainer, scheme.onErrorContainer),
-      ChallengeStatus.draft => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
+      ChallengeStatus.active => (
+        scheme.primaryContainer,
+        scheme.onPrimaryContainer,
+      ),
+      ChallengeStatus.upcoming => (
+        scheme.tertiaryContainer,
+        scheme.onTertiaryContainer,
+      ),
+      ChallengeStatus.completed => (
+        scheme.surfaceContainerHighest,
+        scheme.onSurfaceVariant,
+      ),
+      ChallengeStatus.cancelled => (
+        scheme.errorContainer,
+        scheme.onErrorContainer,
+      ),
+      ChallengeStatus.draft => (
+        scheme.surfaceContainerHighest,
+        scheme.onSurfaceVariant,
+      ),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -339,10 +437,10 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         challengeStatusLabel(status),
-        style: Theme.of(context)
-            .textTheme
-            .labelMedium
-            ?.copyWith(color: foreground, fontWeight: FontWeight.bold),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -363,13 +461,17 @@ class _WinnerBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return ref
-        .watch(challengeRankingProvider((
-          communityUuid: communityUuid,
-          challengeUuid: challengeUuid,
-        )))
+        .watch(
+          challengeRankingProvider((
+            communityUuid: communityUuid,
+            challengeUuid: challengeUuid,
+          )),
+        )
         .maybeWhen(
           data: (ranking) {
-            final winner = ranking.entries.isEmpty ? null : ranking.entries.first;
+            final winner = ranking.entries.isEmpty
+                ? null
+                : ranking.entries.first;
             final name = winner == null
                 ? 'Sem vencedor — nenhum participante com dados válidos.'
                 : SocialIdentity(
@@ -387,11 +489,10 @@ class _WinnerBanner extends ConsumerWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        winner == null
-                            ? name
-                            : 'Vencedor: $name',
+                        winner == null ? name : 'Vencedor: $name',
                         style: theme.textTheme.titleSmall?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer),
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
                       ),
                     ),
                   ],
@@ -415,12 +516,17 @@ class _RankingSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rankingAsync = ref.watch(challengeRankingProvider(
-        (communityUuid: communityUuid, challengeUuid: challengeUuid)));
+    final rankingAsync = ref.watch(
+      challengeRankingProvider((
+        communityUuid: communityUuid,
+        challengeUuid: challengeUuid,
+      )),
+    );
     final me = ref.watch(currentWellnessPersonProvider).valueOrNull;
     final myUuid = me?.uuid;
     return rankingAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      loading: () =>
+          const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       error: (e, _) => Text('Falha ao carregar ranking: $e'),
       data: (ranking) {
         if (ranking.entries.isEmpty) {

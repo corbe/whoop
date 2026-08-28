@@ -53,7 +53,9 @@ void main() {
     test('ignores time-of-day (calendar days)', () {
       expect(
         calendarDaysBetween(
-            DateTime(2026, 8, 16, 23, 59), DateTime(2026, 8, 16, 0, 1)),
+          DateTime(2026, 8, 16, 23, 59),
+          DateTime(2026, 8, 16, 0, 1),
+        ),
         0,
       );
     });
@@ -63,10 +65,7 @@ void main() {
     final today = DateTime(2026, 8, 16);
 
     test('active shows days remaining', () {
-      expect(
-        challengeCountdown(_challenge(), today),
-        '🔥 4 dias restantes',
-      );
+      expect(challengeCountdown(_challenge(), today), '🔥 4 dias restantes');
     });
 
     test('active singular day', () {
@@ -121,12 +120,16 @@ void main() {
     test('completed and cancelled have fixed labels', () {
       expect(
         challengeCountdown(
-            _challenge(status: ChallengeStatus.completed), today),
+          _challenge(status: ChallengeStatus.completed),
+          today,
+        ),
         'Finalizado',
       );
       expect(
         challengeCountdown(
-            _challenge(status: ChallengeStatus.cancelled), today),
+          _challenge(status: ChallengeStatus.cancelled),
+          today,
+        ),
         'Cancelado',
       );
     });
@@ -153,8 +156,11 @@ void main() {
       expect(text, contains('Média entre 2026-08-10 e 2026-08-20'));
       expect(text, contains('5 dias válidos'));
       expect(text, contains('Desempate'));
-      expect(text, isNot(contains('Privacidade')),
-          reason: 'sharing bullet only for non-participants');
+      expect(
+        text,
+        isNot(contains('Privacidade')),
+        reason: 'sharing bullet only for non-participants',
+      );
     });
 
     test('privacy bullet appears when the user does not share the metric', () {
@@ -174,6 +180,42 @@ void main() {
       expect(text, isNot(contains('personUuid')));
       expect(text, isNot(contains('DailyScore')), reason: 'user-facing text');
       expect(text, isNot(contains('z-score')));
+    });
+  });
+
+  group('Fase 3 — tipos de desafio (2026-08-28)', () {
+    test('challengeTypeLabel maps the three types', () {
+      expect(challengeTypeLabel('sum_zones'), 'Soma de zonas');
+      expect(challengeTypeLabel('sleep_consistency'), 'Consistência de sono');
+      expect(challengeTypeLabel('recovery_king'), 'Rei da recuperação');
+      expect(challengeTypeLabel('standard'), 'Desafio');
+      expect(challengeTypeLabel(null), 'Desafio');
+    });
+
+    test('challengeTargetSentence without target is comparative', () {
+      expect(
+        challengeTargetSentence(null, null),
+        'Sem meta fixa — o melhor do grupo vence.',
+      );
+    });
+
+    test('challengeTargetSentence with target and no data is neutral', () {
+      final s = challengeTargetSentence(50, null);
+      expect(s, contains('50'));
+      expect(s, isNot(contains('NaN')));
+    });
+
+    test('challengeTargetSentence clamps percent to 100 visually', () {
+      final s = challengeTargetSentence(60, 133.3);
+      expect(s, contains('100%'));
+      expect(s, isNot(contains('133')));
+    });
+
+    test('challengeTypeDescription covers the three types', () {
+      expect(challengeTypeDescription('sum_zones'), isNotEmpty);
+      expect(challengeTypeDescription('sleep_consistency'), isNotEmpty);
+      expect(challengeTypeDescription('recovery_king'), isNotEmpty);
+      expect(challengeTypeDescription(null), isEmpty);
     });
   });
 }

@@ -36,6 +36,8 @@ class Challenge {
     this.currentUserStatus,
     this.currentUserProgress,
     this.finalizedAt,
+    this.challengeType,
+    this.targetValue,
   });
 
   final String uuid;
@@ -53,6 +55,11 @@ class Challenge {
   final String? currentUserStatus;
   final ChallengeProgress? currentUserProgress;
   final DateTime? finalizedAt;
+
+  /// Fase 3 — tipo canônico (sum_zones / sleep_consistency /
+  /// recovery_king / standard) e meta opcional (target_value).
+  final String? challengeType;
+  final int? targetValue;
 
   factory Challenge.fromJson(Map<String, dynamic> json) {
     return Challenge(
@@ -72,15 +79,18 @@ class Challenge {
       currentUserProgress: json['current_user_progress'] == null
           ? null
           : ChallengeProgress.fromJson(
-              json['current_user_progress'] as Map<String, dynamic>),
+              json['current_user_progress'] as Map<String, dynamic>,
+            ),
       finalizedAt: json['finalized_at'] == null
           ? null
           : DateTime.tryParse(json['finalized_at'] as String),
+      challengeType: json['challenge_type'] as String?,
+      targetValue: json['target_value'] as int?,
     );
   }
 }
 
-/// ChallengeProgress (spec §22–§23, §28–§31).
+/// ChallengeProgress (spec §22–§23, §28–§31) + Fase 3 (meta/percent).
 class ChallengeProgress {
   const ChallengeProgress({
     required this.participantStatus,
@@ -88,6 +98,12 @@ class ChallengeProgress {
     required this.daysCount,
     required this.qualified,
     this.rank,
+    this.challengeType,
+    this.metric,
+    this.aggregation,
+    this.targetValue,
+    this.percent,
+    this.ruleVersion,
   });
 
   final String participantStatus;
@@ -96,6 +112,14 @@ class ChallengeProgress {
   final bool qualified;
   final int? rank;
 
+  /// Fase 3 — tipo, meta e percentual (null quando não há meta).
+  final String? challengeType;
+  final String? metric;
+  final String? aggregation;
+  final int? targetValue;
+  final double? percent;
+  final String? ruleVersion;
+
   factory ChallengeProgress.fromJson(Map<String, dynamic> json) {
     return ChallengeProgress(
       participantStatus: json['participant_status'] as String? ?? 'active',
@@ -103,6 +127,12 @@ class ChallengeProgress {
       daysCount: (json['days_count'] as int?) ?? 0,
       qualified: (json['qualified'] as bool?) ?? false,
       rank: json['rank'] as int?,
+      challengeType: json['challenge_type'] as String?,
+      metric: json['metric'] as String?,
+      aggregation: json['aggregation'] as String?,
+      targetValue: json['target_value'] as int?,
+      percent: (json['percent'] as num?)?.toDouble(),
+      ruleVersion: json['rule_version'] as String?,
     );
   }
 }
@@ -192,6 +222,7 @@ class ChallengeCreateRequest {
     required this.endDate,
     this.description = '',
     this.minDays,
+    this.targetValue,
   });
 
   final String name;
@@ -202,17 +233,21 @@ class ChallengeCreateRequest {
   final String description;
   final int? minDays;
 
+  /// Fase 3 — meta opcional (Soma de zonas N / Consistência de sono threshold).
+  final int? targetValue;
+
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'description': description,
-        'metric': metric,
-        'aggregation': aggregation,
-        'start_date': startDate,
-        'end_date': endDate,
-        if (minDays != null) 'min_days': minDays,
-      };
+    'name': name,
+    'description': description,
+    'metric': metric,
+    'aggregation': aggregation,
+    'start_date': startDate,
+    'end_date': endDate,
+    if (minDays != null) 'min_days': minDays,
+    if (targetValue != null) 'target_value': targetValue,
+  };
 }
 
 /// Supported metrics/aggregations (spec §6, §8) — mirrors backend allowlist.
 const challengeMetrics = ['readiness', 'sleep', 'activity', 'strain'];
-const challengeAggregations = ['average', 'best', 'days_recorded'];
+const challengeAggregations = ['average', 'best', 'days_recorded', 'sum'];
