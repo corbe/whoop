@@ -36,6 +36,16 @@ IconData _iconFor(String iconKey) {
     case 'streak_7':
     case 'streak_30':
       return Icons.local_fire_department_outlined;
+    case 'madrugador':
+      return Icons.wb_sunny_outlined;
+    case 'consistente':
+      return Icons.verified_outlined;
+    case 'explorador':
+      return Icons.explore_outlined;
+    case 'recuperado':
+      return Icons.self_improvement_outlined;
+    case 'maratonista':
+      return Icons.directions_run_outlined;
     default:
       return Icons.stars_outlined;
   }
